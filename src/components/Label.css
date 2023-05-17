@@ -1,0 +1,10 @@
+.label {
+    padding: 0.5em;
+    background-color: azure;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.add-margin-top {
+    margin-top: 1em;
+}

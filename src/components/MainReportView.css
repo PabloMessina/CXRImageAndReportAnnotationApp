@@ -1,0 +1,55 @@
+.container {
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+}
+.left-column {
+    width: 37%;
+    padding: 3px;
+}
+.middle-column {
+    width: 38%;
+    padding: 3px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    overflow: auto;
+}
+.right-column {
+    width: 25%;
+    padding: 3px;
+    height: 100%;
+    overflow: auto;
+}
+.images-container-wrapper {
+    display: flex;
+    /* justify-content: space-between; */
+    flex-direction: column;
+    height: 100%;
+}
+.images-container {
+    overflow: auto;
+    max-width: 100%;
+    max-height: 100%;
+}
+.report-container {
+    overflow: auto;
+    max-width: 100%;
+    max-height: 100%;
+}
+.report-container-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.label-span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 5px;    
+}
+.report-question-wrapper {
+    background-color: azure;
+}

@@ -1,0 +1,12 @@
+.app {
+    height: 97vh;
+    display: flex;
+    /* align-items: stretch; */
+    flex-direction: column;
+}
+.header {
+    height: 60px
+}
+.content {
+    height: calc(100% - 60px);
+}

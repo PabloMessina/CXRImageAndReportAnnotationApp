@@ -1,0 +1,87 @@
+{
+    "report_id": 10,
+    "report_filepath": "/mnt/data/mimic-cxr/files/p10/p10745810/s59693791.txt",
+    "split": "train",
+    "part_id": 10,
+    "subject_id": 10745810,
+    "study_id": 59693791,
+    "dicom_id_view_pos_pairs": [
+        [
+            "00138842-345f9558-d5aa2910-6a2692e2-1c14906e",
+            "LATERAL"
+        ],
+        [
+            "602eebfa-bf8aa213-d37388e6-0f614fb1-12e5e8e3",
+            "PA"
+        ]
+    ],
+    "original_report": "                                 FINAL REPORT\n INDICATION:  ___F with bradycardia, dyspnea, diarrhea  // eval ? effusion,\n infiltrate\n \n TECHNIQUE:  PA and lateral views the chest.\n \n COMPARISON:  ___.\n \n FINDINGS: \n \n There are small bilateral pleural effusions.  Lungs are otherwise clear\n without focal consolidation or edema.  There is mild cardiomegaly and\n atherosclerotic calcifications of the aortic arch.  Compression deformity in\n the mid thoracic spine is similar compared to prior.\n \n IMPRESSION: \n \n Small bilateral pleural effusions.\n",
+    "chexpert_labels": {
+        "cardiomegaly": [
+            [
+                331,
+                413
+            ]
+        ]
+    },
+    "chest_imagenome_labels": {
+        "lung opacity": [
+            [
+                219,
+                263
+            ],
+            [
+                513,
+                547
+            ]
+        ],
+        "abnormal": [
+            [
+                219,
+                263
+            ],
+            [
+                331,
+                413
+            ],
+            [
+                415,
+                493
+            ],
+            [
+                513,
+                547
+            ]
+        ],
+        "vascular calcification": [
+            [
+                331,
+                413
+            ]
+        ],
+        "enlarged cardiac silhouette": [
+            [
+                331,
+                413
+            ]
+        ],
+        "spinal fracture": [
+            [
+                415,
+                493
+            ]
+        ]
+    },
+    "common_labels": {
+        "pleural effusion": [
+            [
+                219,
+                263
+            ],
+            [
+                513,
+                547
+            ]
+        ]
+    }
+}
