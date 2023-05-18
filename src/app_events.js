@@ -2,6 +2,7 @@
 const APP_EVENTS = {
     LABEL_MOUSE_ENTER: 'label_mouse_enter',
     LABEL_MOUSE_LEAVE: 'label_mouse_leave',
+    ANNOTATE_IMAGE: 'annotate_image',
 };
 
 console.log('App events: ', APP_EVENTS);

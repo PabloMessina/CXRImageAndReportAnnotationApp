@@ -1,10 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import MainReportView from './components/MainReportView';
 import styles from './App.css';
+import store from './store';
+import ReportData from './report_data';
 
 function App() {
+    
+    let report_data;
+    if (store.has('report_data')) {
+        report_data = store.get('report_data');
+    } else {
+        // Set an empty report_data object in the store as the default
+        report_data = new ReportData();
+        store.set('report_data', report_data)
+    }
 
-    const [metadata, setMetadata] = useState({});
+    const [forceUpdate, setForceUpdate] = useState(false);
 
     useEffect(() => {
         // Make an API request to fetch a default metadata.json file from the server
@@ -15,7 +26,12 @@ function App() {
             return response;
         })
         .then((response) => response.json())
-        .then((data) => { setMetadata(data); })
+        .then((data) => { 
+            report_data.set_metadata(data);
+            setForceUpdate(!forceUpdate);
+            console.log('Success:', report_data);
+            console.log('Success: report_data.get_metadata():', report_data.get_metadata());
+        })
         .catch((error) => {
             console.error('Error fetching data:', error);
         });
@@ -27,7 +43,7 @@ function App() {
                 <h2>Chest X-ray Image and Report Annotation App</h2>
             </div>
             <div className={styles.content}>
-                <MainReportView metadata={metadata} />
+                <MainReportView />
             </div>
         </div>
     );

@@ -8,6 +8,8 @@ import { APP_EVENTS, subscribe_to_event, unsubscribe_from_event } from '../app_e
 import RoundQuestionButton from './RoundQuestionButton';
 import AgreementRadioButtons from './AgreementRadioButtons';
 import HighResImageModal from './HighResImageModal';
+import ImageAnnotationModal from './ImageAnnotationModal';
+import store from '../store';
 
 const LABEL_NAMES = ['chexpert_labels', 'chest_imagenome_labels', 'common_labels'];
 const CHEXPERT_LINK = "https://github.com/stanfordmlgroup/chexpert-labeler";
@@ -18,14 +20,21 @@ const round_question_button_style = {
     marginLeft: '5px',
 };
 
-function MainReportView({ metadata }) {
-    console.log("From MainReportView: ", metadata);
+function MainReportView() {
 
+    const report_data = store.get('report_data');
+
+    // console.log("From MainReportView: ", report_data );
+
+    // State that can be initialized from report_data
+    const [reportAccuracy, setReportAccuracy] = useState(report_data.get_report_accuracy());
+    const [reportCompleteness, setReportCompleteness] = useState(report_data.get_report_completeness());
+    // State associated with GUI interactions
     const [reportIndexPairList, setReportIndexPairList] = useState([]);
-    const [reportAccuracy, setReportAccuracy] = useState(null);
-    const [reportCompleteness, setReportCompleteness] = useState(null);
     const [highResImageModalVisible, setHighResImageModalVisible] = useState(false);
     const [highResImageMetadata, setHighResImageMetadata] = useState(null);
+    const [imageAnnotationModalVisible, setImageAnnotationModalVisible] = useState(false);
+    const [imageAnnotationMetadata, setImageAnnotationMetadata] = useState(null);
 
     useEffect(() => {
         const handleLabelMouseEnter = (label_name, index_pair_list) => {
@@ -48,11 +57,25 @@ function MainReportView({ metadata }) {
         };
     }, []);
 
+    useEffect(() => {
+        const handleAnnotateImage = (label_name, image_metadata) => {
+            console.log(`From MainReportView: Annotate image ${label_name}, ${image_metadata}`);
+            setImageAnnotationMetadata({ label_name, image_metadata });
+            setImageAnnotationModalVisible(true);
+        };
+        subscribe_to_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
+        return () => {
+            unsubscribe_from_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
+        };
+    }, []);
+
     const handleReportAccuracyChange = (event) => {
+        report_data.set_report_accuracy(event.target.value);
         setReportAccuracy(event.target.value);
     };
 
     const handleReportCompletenessChange = (event) => {
+        report_data.set_report_completeness(event.target.value);
         setReportCompleteness(event.target.value);
     };
 
@@ -61,11 +84,17 @@ function MainReportView({ metadata }) {
     let image_metadata_list = [];
 
     // check if metadata has property dicom_id_view_pos_pairs
-    if (metadata.hasOwnProperty("dicom_id_view_pos_pairs")) {
-        const partId = metadata["part_id"];
-        const subjectId = metadata["subject_id"];
-        const studyId = metadata["study_id"];
-        const dicom_id_view_pos_pairs = metadata["dicom_id_view_pos_pairs"];
+    const dicom_id_view_pos_pairs = report_data.get_dicom_id_view_pos_pairs();
+    // console.log('DEBUG');
+    // console.log('dicom_id_view_pos_pairs', dicom_id_view_pos_pairs);
+    // console.log('report_data', report_data);
+    // console.log('report_data._metadata', report_data._metadata);
+    // console.log('report_data._annotations', report_data._annotations);
+
+    if (dicom_id_view_pos_pairs !== undefined) {
+        const partId = report_data.get_part_id();
+        const subjectId = report_data.get_subject_id();
+        const studyId = report_data.get_study_id();
         // define a list of images with dicom_ids as props
         for (let i = 0; i < dicom_id_view_pos_pairs.length; i++) {
             const [dicomId, viewPos] = dicom_id_view_pos_pairs[i];
@@ -82,20 +111,17 @@ function MainReportView({ metadata }) {
             );
         }
     }
-    const image_text = images.length + " " + (images.length > 1 ? "images" : "image");
+    const image_text = `Images (${images.length})`;
     // Labels
     let labels_list = [[], [], []];
     for (let i = 0; i < 3; i++) {
-        const label_name = LABEL_NAMES[i];
-        if (metadata.hasOwnProperty(label_name)) {
-            const labels = metadata[label_name];
-            // console.log("labels: ", labels);
-            const keys = Object.keys(labels);
-            // console.log("keys: ", keys);
+        const label_data = report_data.get_label_data(LABEL_NAMES[i]);
+        if (label_data !== undefined) {
+            const keys = Object.keys(label_data);
             keys.sort();
             for (let j = 0; j < keys.length; j++) {
                 const label = keys[j];
-                const indexes = labels[label];
+                const indexes = label_data[label];
                 labels_list[i].push(<Label key={label} name={label} indexes={indexes}
                                            image_metadata_list={image_metadata_list}/>);
             }
@@ -105,7 +131,7 @@ function MainReportView({ metadata }) {
         <div className={styles['container']}>
             <div className={styles['left-column']}>
                 <div className={styles['images-container-wrapper']}>
-                    <p>{image_text}</p>
+                    <h2>{image_text}</h2>
                     <div className={styles['images-container']}>
                         {images}
                     </div>
@@ -114,8 +140,9 @@ function MainReportView({ metadata }) {
             <div className={styles['middle-column']}>
                 <div className={styles['report-container-wrapper']}>
                     <h2>Report:</h2>
+                    <span> Filepath: {report_data.get_report_filepath()} </span>
                     <HighlightableText className={styles['report-container']}
-                        text={metadata["original_report"]} index_pair_list={reportIndexPairList} />
+                        text={report_data.get_original_report()} index_pair_list={reportIndexPairList} />
                     <br />
                     <div className={styles['report-question-wrapper']}>
                         <b>How accurate is this report?</b>
@@ -153,6 +180,14 @@ function MainReportView({ metadata }) {
             {highResImageModalVisible && (
                 ReactDOM.createPortal(
                 <HighResImageModal imageMetadata={highResImageMetadata} onClose={() => setHighResImageModalVisible(false)} />,
+                document.body
+                )
+            )}
+            {imageAnnotationModalVisible && (
+                ReactDOM.createPortal(
+                <ImageAnnotationModal labelName={imageAnnotationMetadata["label_name"]}
+                                      imageMetadata={imageAnnotationMetadata["image_metadata"]}
+                                      onClose={() => setImageAnnotationModalVisible(false)} />,
                 document.body
                 )
             )}

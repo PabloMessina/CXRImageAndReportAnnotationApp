@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import { APP_EVENTS, emit_event } from '../app_events';
 import styles from './Label.css';
-import { cloneDeep } from 'lodash';
 import AgreementRadioButtons from './AgreementRadioButtons';
+import store from '../store';
+
+function get_draw_grounding_button_on_click_callback(label_name, image_metadata) {
+    const callback = () => { emit_event(APP_EVENTS.ANNOTATE_IMAGE, label_name, image_metadata); }
+    return callback;
+}
 
 function Label({ name, indexes, image_metadata_list }) {
-    console.log(`Label: {name}, {indexes}, {image_metadata_list}`);
+    // console.log(`Label: {name}, {indexes}, {image_metadata_list}`);
+
+    const report_data = store.get('report_data');
     
-    const [agreement, setAgreement] = useState(null);
-    const [imageGroundingData, setImageGroundingData] = useState({});
-    const [labelSource, setLabelSource] = useState(null);
+    const [forceUpdate, setForceUpdate] = useState(false);
+    
+    const agreement = report_data.get_agreement_for_gt_label(name);
+    const labelSource = report_data.get_label_source_for_gt_label(name);
 
     const handleMouseEnter = () => {
         emit_event(APP_EVENTS.LABEL_MOUSE_ENTER, name, indexes);
@@ -18,35 +26,28 @@ function Label({ name, indexes, image_metadata_list }) {
         emit_event(APP_EVENTS.LABEL_MOUSE_LEAVE, name);
     };
     const handleAgreementChange = (event) => {
-        setAgreement(event.target.value);
+        report_data.set_agreement_for_gt_label(name, event.target.value);
+        setForceUpdate(!forceUpdate);
     };
     const handleImageGroundingChange = (event, index) => {
-        const new_image_grounding_data = cloneDeep(imageGroundingData);
-        if (!new_image_grounding_data.hasOwnProperty(index)) {
-            new_image_grounding_data[index] = {};
-        }
-        new_image_grounding_data[index].visible = event.target.value;
-        setImageGroundingData(new_image_grounding_data);
-        console.log('handleImageGroundingChange', new_image_grounding_data);
+        const dicom_id = report_data.get_dicom_id(index);
+        report_data.set_has_grounding_for_gt_label(name, dicom_id, event.target.value);
+        setForceUpdate(!forceUpdate);
     };
     const handleLabelSourceChange = (event) => {
-        setLabelSource(event.target.value);
+        report_data.set_label_source_for_gt_label(name, event.target.value);
+        setForceUpdate(!forceUpdate);
     };
 
     const image_grounding_divs = [];
     for (let i = 0; i < image_metadata_list.length; i++) {
         const image_metadata = image_metadata_list[i];
-        let visible;
-        if (imageGroundingData.hasOwnProperty(i)) {
-            visible = imageGroundingData[i].visible;
-        } else {
-            visible = null;
-        }
+        const visible = report_data.get_has_grounding_for_gt_label(name, image_metadata.dicomId);
         const callback = (event) => { handleImageGroundingChange(event, i); };
         let draw_grounding_button = null;
         if (visible === "Yes") {
             draw_grounding_button = (
-                <button>
+                <button onClick={get_draw_grounding_button_on_click_callback(name, image_metadata)}>
                     Draw Grounding
                 </button>
             );
@@ -90,7 +91,7 @@ function Label({ name, indexes, image_metadata_list }) {
                                    percent_list={["0%", "25%", "50%", "75%", "100%"]}/>
             <div className={styles['add-margin-top']}>Can this label be observed in the image(s)?</div>
             <ul>{image_grounding_divs}</ul>
-            <div>Is additional information needed to determine if this label is present?</div>
+            <div>Are the images sufficient to infer the label?</div>
             <div>
                 {/* create a bullet list of the following options, using html <ul> and <li> tags */}
                 <ul>
@@ -103,7 +104,7 @@ function Label({ name, indexes, image_metadata_list }) {
                                 checked={labelSource === "1"}
                                 onChange={handleLabelSourceChange}
                             />
-                            No, the image(s) are sufficient, the label is clearly visible.
+                            Yes, the image(s) are sufficient, the label is evident.
                         </label>
                     </li>
                     <li>
@@ -115,7 +116,7 @@ function Label({ name, indexes, image_metadata_list }) {
                                 checked={labelSource === "2"}
                                 onChange={handleLabelSourceChange}
                             />
-                            Yes, the report's indication section (or similar) contains key additional information to infer the label.
+                            No, but the report's indication/history sections provide sufficient complementary information.
                         </label>
                     </li>
                     <li>
@@ -127,7 +128,7 @@ function Label({ name, indexes, image_metadata_list }) {
                                 checked={labelSource === "3"}
                                 onChange={handleLabelSourceChange}
                             />
-                            Yes, but information outside of the report is needed.
+                            No, information outside of the report (e.g., other exams) is needed.
                         </label>
                     </li>
                     <li>

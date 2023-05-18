@@ -1,8 +1,8 @@
 import React from 'react';
 
-function HighlightableText({ text, index_pair_list=[], highlightColor='#FFFF00' }) {
+function HighlightableText({ text, className, index_pair_list=[], highlightColor='#FFFF00' }) {
     if (index_pair_list.length === 0) {
-        return <pre>{text}</pre>;
+        return <pre className={className}>{text}</pre>;
     }
     const spans = [];
     let last_index = 0;
@@ -17,7 +17,7 @@ function HighlightableText({ text, index_pair_list=[], highlightColor='#FFFF00' 
     if (last_index < text.length) {
         spans.push(<span key={last_index}>{text.slice(last_index)}</span>);
     }
-    return <pre>{spans}</pre>;
+    return <pre className={className}>{spans}</pre>;
 }
 
 export default HighlightableText;
