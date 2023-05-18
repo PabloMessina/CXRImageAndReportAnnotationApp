@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { APP_NAME } from '../config';
 
 const button_style = {
     position: 'absolute',
@@ -13,7 +14,7 @@ const button_style = {
 
 function Image({ metadata, size, expandCallback }) {
     const { partId, subjectId, studyId, dicomId } = metadata;
-    const imagePath = `/api/images-${size}/${partId}/${subjectId}/${studyId}/${dicomId}`;
+    const imagePath = `${APP_NAME}/api/images-${size}/${partId}/${subjectId}/${studyId}/${dicomId}`;
     if (expandCallback !== undefined) {
         const [isHovered, setIsHovered] = useState(false);
         const handleMouseEnter = () => { setIsHovered(true); };

@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "webpack": "webpack --config webpack.config.js",
+    "build": "npm run webpack -- --env mode=production",
+    "prod": "NODE_ENV=production node server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,15 +16,14 @@
     "express": "^4.18.2",
     "lodash": "^4.17.21",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-redux": "^8.0.5",
-    "redux": "^4.2.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.21.8",
     "@babel/preset-react": "^7.18.6",
     "babel-loader": "^9.1.2",
     "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.1",
     "style-loader": "^3.3.2",
     "webpack": "^5.82.1",
     "webpack-cli": "^5.1.1",

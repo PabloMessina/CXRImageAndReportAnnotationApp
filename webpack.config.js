@@ -1,55 +1,49 @@
 const path = require('path');
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-module.exports = {
-    mode: 'development',
-    entry: './src/index.js',
-    output: {
-        path: path.resolve(__dirname, 'public'),
-        filename: 'bundle.js',
-    },
-    module: {
-        rules: [
-            {
-                test: /\.(js|jsx)$/,
-                exclude: /node_modules/,
-                use: ['babel-loader'],
-            },
-            // {
-            //     test: /\.module\.css$/,
-            //     use: [
-            //         'style-loader',
-            //         {
-            //             loader: 'css-loader',
-            //             options: {
-            //                 modules: true,
-            //             },
-            //         },
-            //     ],
-            // },
-            // {
-            //     test: /\.css$/,
-            //     use: ['style-loader', 'css-loader'],
-            // },
+module.exports = ({ mode } = { mode: "production" }) => {
+    console.log(`mode is: ${mode}`);
 
-            // CSS rules
-            {
-                test: /\.css$/,
-                use: [
-                    "style-loader",
-                    {
-                        loader: "css-loader",
-                        options: {
-                            importLoaders: 1,
-                            modules: true,
-                        },
-                    },
-                ],
-            },
-        ],
-    },
-    devServer: {
-        proxy: {
-            '/api': 'http://localhost:3000',
+    return {
+        mode,
+        entry: './src/index.js',
+        output: {
+            publicPath: '/',
+            path: path.resolve(__dirname, 'build'),
+            filename: 'bundle.js',
         },
-    },
+        module: {
+            rules: [
+                {
+                    test: /\.(js|jsx)$/,
+                    exclude: /node_modules/,
+                    use: ['babel-loader'],
+                },
+                // CSS rules
+                {
+                    test: /\.css$/,
+                    use: [
+                        "style-loader",
+                        {
+                            loader: "css-loader",
+                            options: {
+                                importLoaders: 1,
+                                modules: true,
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+        plugins: [
+            new HtmlWebpackPlugin({
+                template: "./public/index.html",
+            }),
+        ],
+        devServer: {
+            proxy: {
+                '/api': 'http://localhost:3000',
+            },
+        },
+    };
 };

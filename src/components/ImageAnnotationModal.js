@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import styles from "./ImageAnnotationModal.css";
 import store from '../store';
+import { APP_NAME } from "../config";
 
 const labelNameSpanStyle = {
     'color': 'darkblue',
@@ -76,7 +77,6 @@ function getDeletePolygonButtonCallback_CustomLabel(report_data, labelIndex, dic
     };
 }
 
-
 function ImageAnnotationModal({ metadata, onClose }) {
     const report_data = store.get('report_data');
 
@@ -96,7 +96,7 @@ function ImageAnnotationModal({ metadata, onClose }) {
     const { partId, subjectId, studyId, dicomId, viewPos } = imageMetadata;
     const header_text = `High Resolution Image (viewPos: ${viewPos}, partId: ${partId}, ` +
                         `subjectId: ${subjectId}, studyId: ${studyId}, dicomId: ${dicomId})`;
-    const imageUrl = `/api/images-large/${partId}/${subjectId}/${studyId}/${dicomId}`;    
+    const imageUrl = `${APP_NAME}/api/images-large/${partId}/${subjectId}/${studyId}/${dicomId}`;    
 
     let polygon_list;
     if (isGroundTruthLabel) {

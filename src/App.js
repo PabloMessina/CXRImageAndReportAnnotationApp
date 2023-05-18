@@ -3,6 +3,7 @@ import MainReportView from './components/MainReportView';
 import styles from './App.css';
 import store from './store';
 import ReportData from './report_data';
+import { APP_NAME } from './config';
 
 function App() {
     
@@ -19,7 +20,7 @@ function App() {
 
     useEffect(() => {
         // Make an API request to fetch a default metadata.json file from the server
-        fetch('/api/default_metadata')
+        fetch(`${APP_NAME}/api/default_metadata`)
         // log server status
         .then((response) => {
             console.log('Server status: ', response.status);

@@ -99,7 +99,7 @@ function MainReportView() {
         setTimeout(() => {
             scrollableDivRef.current.scrollTop = scrollableDivRef.current.scrollHeight;
             // scroll upwards a bit to make the new label visible
-            scrollableDivRef.current.scrollTop -= 100;
+            scrollableDivRef.current.scrollTop -= 200;
         }, 0);
     };
 
