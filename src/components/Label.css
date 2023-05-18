@@ -4,7 +4,14 @@
     margin-top: 1em;
     margin-bottom: 1em;
 }
-
+.label-name {
+    font-weight: bold;
+    font-size: 1.2em;
+    /* font color */
+    color: darkblue;
+    /* underline text */
+    text-decoration: underline;
+}
 .add-margin-top {
     margin-top: 1em;
 }

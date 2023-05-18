@@ -2,6 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import styles from "./ImageAnnotationModal.css";
 import store from '../store';
 
+const labelNameSpanStyle = {
+    'color': 'darkblue',
+    'textDecoration': 'underline',
+};
+
 function drawPolygon(context, points, color, close = true, number = null) {
     context.beginPath();
     context.moveTo(points[0][0], points[0][1]);
@@ -58,15 +63,49 @@ function getDeletePolygonButtonCallback(report_data, labelName, dicomId, index, 
     };
 }
 
-function ImageAnnotationModal({ labelName, imageMetadata, onClose }) {
+function getDeletePolygonButtonCallback_CustomLabel(report_data, labelIndex, dicomId, index, setNumberOfPolygons,
+    canvasRef, imageRef, currentPolygonRef) {
+    return () => {
+        report_data.delete_polygon_for_custom_label(labelIndex, dicomId, index);
+        const polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
+        const context = canvasRef.current.getContext('2d');
+        const image = imageRef.current;
+        const currentPolygon = currentPolygonRef.current;
+        setNumberOfPolygons(polygon_list.length);
+        drawScene(context, image, polygon_list, currentPolygon);
+    };
+}
+
+
+function ImageAnnotationModal({ metadata, onClose }) {
+    const report_data = store.get('report_data');
+
+    const imageMetadata = metadata['image_metadata'];
+    const labelIndex = metadata['label_index']; // used by custom labels the user is creating
+    // If labelIndex is not undefined, then this is a custom label. Otherwise, it is a ground truth label.
+    // Some logic will be different depending on whether this is a ground truth label or a custom label.
+    const isGroundTruthLabel = labelIndex === undefined;
+    
+    let labelName;
+    if (isGroundTruthLabel) {
+        labelName = metadata['label_name'];
+    } else {
+        labelName = report_data.get_custom_label_name(labelIndex);
+    }
+
     const { partId, subjectId, studyId, dicomId, viewPos } = imageMetadata;
     const header_text = `High Resolution Image (viewPos: ${viewPos}, partId: ${partId}, ` +
                         `subjectId: ${subjectId}, studyId: ${studyId}, dicomId: ${dicomId})`;
-    const imageUrl = `/api/images-large/${partId}/${subjectId}/${studyId}/${dicomId}`;
+    const imageUrl = `/api/images-large/${partId}/${subjectId}/${studyId}/${dicomId}`;    
 
-    const report_data = store.get('report_data');
-
-    let polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
+    let polygon_list;
+    if (isGroundTruthLabel) {
+        polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
+    } else {
+        polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
+    }
+    // console.log(`isGroundTruthLabel: ${isGroundTruthLabel}`);
+    // console.log(`polygon_list: ${polygon_list}`);
     
     const canvasRef = useRef(null);
     const imageRef = useRef(null);
@@ -97,8 +136,13 @@ function ImageAnnotationModal({ labelName, imageMetadata, onClose }) {
                         const currentPolygon = currentPolygonRef.current.slice();
                         currentPolygon.pop(); // remove last point, which is (approximately) the same as first point
                         // add polygon to report data
-                        report_data.add_polygon_for_gt_label(labelName, dicomId, currentPolygon);
-                        polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
+                        if (isGroundTruthLabel) {
+                            report_data.add_polygon_for_gt_label(labelName, dicomId, currentPolygon);
+                            polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
+                        } else {
+                            report_data.add_polygon_for_custom_label(labelIndex, dicomId, currentPolygon);
+                            polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
+                        }
                         setNumberOfPolygons(polygon_list.length);
                         // reset current polygon
                         currentPolygonRef.current = [];
@@ -183,12 +227,24 @@ function ImageAnnotationModal({ labelName, imageMetadata, onClose }) {
 
     let deletePolygonButtons = [];
     for (let i = 0; i < numberOfPolygons; i++) {
-        const callback = getDeletePolygonButtonCallback(
-            report_data, labelName, dicomId, i, setNumberOfPolygons, 
-            canvasRef, imageRef, currentPolygonRef);
+        let callback;
+        if (isGroundTruthLabel) {
+            callback = getDeletePolygonButtonCallback(
+                report_data, labelName, dicomId, i, setNumberOfPolygons,
+                canvasRef, imageRef, currentPolygonRef);
+        } else {
+            callback = getDeletePolygonButtonCallback_CustomLabel(
+                report_data, labelIndex, dicomId, i, setNumberOfPolygons,
+                canvasRef, imageRef, currentPolygonRef);
+        }
         deletePolygonButtons.push(
             <button key={i} onClick={callback}>Delete Polygon {i+1}</button>
         );
+    }
+
+    let labelNameToShow = labelName;
+    if (labelNameToShow === '') {
+        labelNameToShow = '<unknown_label>';
     }
     
     return (
@@ -198,10 +254,10 @@ function ImageAnnotationModal({ labelName, imageMetadata, onClose }) {
                 <div className={styles["modal-body"]}>
                     <div className={styles["split-container"]}>
                         <div className={styles["sidebar"]}>
-                            <h3>Finding visual evidence for "{labelName}" label</h3>
+                            <h3>Finding visual evidence for <span style={labelNameSpanStyle}>{labelNameToShow}</span> label</h3>
                             <h3>Instructions</h3>
                             <span>
-                                Click to add points and draw polygons around areas where <b>"{labelName}"</b> is present.
+                                Click to add points and draw polygons around areas where <span style={labelNameSpanStyle}>{labelNameToShow}</span> is present.
                                 Use Ctrl-Z to undo individual points. Use Esc to fully clear current polygon.
                             </span>
                             <h3>Number of polygons: {numberOfPolygons}</h3>

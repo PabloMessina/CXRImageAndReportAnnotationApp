@@ -6,7 +6,7 @@ function HighlightableText({ text, className, index_pair_list=[], highlightColor
     }
     const spans = [];
     let last_index = 0;
-    console.log(index_pair_list);
+    // console.log(index_pair_list);
     for (const [start, end] of index_pair_list) {
         if (start > last_index) {
             spans.push(<span key={last_index}>{text.slice(last_index, start)}</span>);

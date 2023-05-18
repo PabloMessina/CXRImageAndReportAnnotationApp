@@ -30,7 +30,6 @@ function App() {
             report_data.set_metadata(data);
             setForceUpdate(!forceUpdate);
             console.log('Success:', report_data);
-            console.log('Success: report_data.get_metadata():', report_data.get_metadata());
         })
         .catch((error) => {
             console.error('Error fetching data:', error);

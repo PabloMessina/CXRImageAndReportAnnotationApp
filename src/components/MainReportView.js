@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import Image from './Image';
 import Label from './Label';
+import CustomLabel from './CustomLabel';
 import HighlightableText from './HighlightableText';
 import styles from './MainReportView.css';
 import { APP_EVENTS, subscribe_to_event, unsubscribe_from_event } from '../app_events';
@@ -29,43 +30,49 @@ function MainReportView() {
     // State that can be initialized from report_data
     const [reportAccuracy, setReportAccuracy] = useState(report_data.get_report_accuracy());
     const [reportCompleteness, setReportCompleteness] = useState(report_data.get_report_completeness());
+    const [reportComment, setReportComment] = useState(report_data.get_report_comment());
     // State associated with GUI interactions
     const [reportIndexPairList, setReportIndexPairList] = useState([]);
     const [highResImageModalVisible, setHighResImageModalVisible] = useState(false);
     const [highResImageMetadata, setHighResImageMetadata] = useState(null);
     const [imageAnnotationModalVisible, setImageAnnotationModalVisible] = useState(false);
     const [imageAnnotationMetadata, setImageAnnotationMetadata] = useState(null);
+    const [forceUpdate, setForceUpdate] = useState(false);
+
+    const scrollableDivRef = useRef(null);
 
     useEffect(() => {
         const handleLabelMouseEnter = (label_name, index_pair_list) => {
-            console.log(`From MainReportView: Label ${label_name} mouse enter`);
+            // console.log(`From MainReportView: Label ${label_name} mouse enter`);
             setReportIndexPairList(index_pair_list);
         };
         const handleLabelMouseLeave = (label_name) => {
-            console.log(`From MainReportView: Label ${label_name} mouse leave`);
+            // console.log(`From MainReportView: Label ${label_name} mouse leave`);
             setReportIndexPairList([]);
         };
-    
-        // Subscribe to the event when the component mounts
-        subscribe_to_event(APP_EVENTS.LABEL_MOUSE_ENTER, handleLabelMouseEnter);
-        subscribe_to_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
-    
-        // Unsubscribe from the event when the component unmounts
-        return () => {
-            unsubscribe_from_event(APP_EVENTS.LABEL_MOUSE_ENTER, handleLabelMouseEnter);
-            unsubscribe_from_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
-        };
-    }, []);
-
-    useEffect(() => {
         const handleAnnotateImage = (label_name, image_metadata) => {
-            console.log(`From MainReportView: Annotate image ${label_name}, ${image_metadata}`);
+            // console.log(`From MainReportView: Annotate image ${label_name}, ${image_metadata}`);
             setImageAnnotationMetadata({ label_name, image_metadata });
             setImageAnnotationModalVisible(true);
         };
+        const handleAnnotateImageCustom = (label_index, image_metadata) => {
+            // console.log(`From MainReportView: Annotate image custom ${label_index}, ${image_metadata}`);
+            setImageAnnotationMetadata({ label_index, image_metadata });
+            setImageAnnotationModalVisible(true);
+        };
+
+        // Subscribe to events when the component mounts
+        subscribe_to_event(APP_EVENTS.LABEL_MOUSE_ENTER, handleLabelMouseEnter);
+        subscribe_to_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
         subscribe_to_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
+        subscribe_to_event(APP_EVENTS.ANNOTATE_IMAGE_CUSTOM_LABEL, handleAnnotateImageCustom);
+    
+        // Unsubscribe from events when the component unmounts
         return () => {
+            unsubscribe_from_event(APP_EVENTS.LABEL_MOUSE_ENTER, handleLabelMouseEnter);
+            unsubscribe_from_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
             unsubscribe_from_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
+            unsubscribe_from_event(APP_EVENTS.ANNOTATE_IMAGE_CUSTOM_LABEL, handleAnnotateImageCustom);
         };
     }, []);
 
@@ -77,6 +84,31 @@ function MainReportView() {
     const handleReportCompletenessChange = (event) => {
         report_data.set_report_completeness(event.target.value);
         setReportCompleteness(event.target.value);
+    };
+
+    const handleReportCommentChange = (event) => {
+        report_data.set_report_comment(event.target.value);
+        setReportComment(event.target.value);
+    };
+
+    const handleCreateNewLabelClick = () => {
+        // console.log('From MainReportView: Create new label');
+        report_data.create_new_empty_custom_label();
+        setForceUpdate(!forceUpdate);
+        // Scroll to the bottom of the scrollable div, but only after the DOM has been updated
+        setTimeout(() => {
+            scrollableDivRef.current.scrollTop = scrollableDivRef.current.scrollHeight;
+            // scroll upwards a bit to make the new label visible
+            scrollableDivRef.current.scrollTop -= 100;
+        }, 0);
+    };
+
+    const getOnDeleteCustomLabelHandler = (label_index) => {
+        return () => {
+            // console.log(`From MainReportView: Delete custom label ${label_index}`);
+            report_data.delete_custom_label(label_index);
+            setForceUpdate(!forceUpdate);
+        };
     };
 
     // Define a list of images
@@ -111,7 +143,7 @@ function MainReportView() {
             );
         }
     }
-    const image_text = `Images (${images.length})`;
+    const image_text = `Images (${images.length}):`;
     // Labels
     let labels_list = [[], [], []];
     for (let i = 0; i < 3; i++) {
@@ -127,6 +159,17 @@ function MainReportView() {
             }
         }
     }
+    // Custom labels (added by the user)
+    const custom_labels = report_data.get_custom_labels();
+    let custom_labels_list = [];
+    for (let i = 0; i < custom_labels.length; i++) {
+        custom_labels_list.push(
+            <CustomLabel key={custom_labels[i]['id']} label_index={i} image_metadata_list={image_metadata_list}
+                            handleDeleteButtonClicked={getOnDeleteCustomLabelHandler(i)}
+            />
+        );
+    }
+
     return (
         <div className={styles['container']}>
             <div className={styles['left-column']}>
@@ -157,24 +200,49 @@ function MainReportView() {
                                             handleAgreementChange={handleReportCompletenessChange}
                                             percent_list={["0%", "25%", "50%", "75%", "100%"]} />
                     </div>
+                    <br />
+                    <div className={styles['report-question-wrapper']}>
+                        <b>Any comments about this report?</b>
+                        <br />
+                        <textarea className={styles['report-comment-textarea']}
+                            value={reportComment} onChange={handleReportCommentChange} />
+                    </div>
                 </div>
             </div>
             <div className={styles['right-column']}>
-                <div>
-                    <span className={styles['label-span']}>Labels detected only by CheXpert ({labels_list[0].length})
-                        <RoundQuestionButton link={CHEXPERT_LINK} style={round_question_button_style} />
-                    </span>
-                    {labels_list[0]}
+                <div className={styles['labels-header']}>
+                    <h2>Labels:</h2>
                 </div>
-                <div>
-                    <span className={styles['label-span']}>Labels detected only by Chest ImaGenome ({labels_list[1].length})
-                        <RoundQuestionButton link={CHEST_IMAGENOME_LINK} style={round_question_button_style} />
-                    </span>
-                    {labels_list[1]}
+                <div className={styles['labels-container']} ref={scrollableDivRef}>
+                    <div>
+                        <span className={styles['label-span']}>Labels detected only by CheXpert ({labels_list[0].length})
+                            <RoundQuestionButton link={CHEXPERT_LINK} style={round_question_button_style} />
+                        </span>
+                        {labels_list[0]}
+                    </div>
+                    <div>
+                        <span className={styles['label-span']}>Labels detected only by Chest ImaGenome ({labels_list[1].length})
+                            <RoundQuestionButton link={CHEST_IMAGENOME_LINK} style={round_question_button_style} />
+                        </span>
+                        {labels_list[1]}
+                    </div>
+                    <div>
+                        <span className={styles['label-span']}>Labels detected by both labelers ({labels_list[2].length})</span>
+                        {labels_list[2]}
+                    </div>
+                    {
+                        custom_labels_list.length > 0 && (
+                            <div>
+                                <span className={styles['custom-label-span']}>Custom labels ({custom_labels_list.length})</span>
+                                {custom_labels_list}
+                            </div>
+                        )
+                    }
+
                 </div>
-                <div>
-                    <span className={styles['label-span']}>Labels detected by both labelers ({labels_list[2].length})</span>
-                    {labels_list[2]}
+                <div className={styles['labels-missing-container']}>
+                    <span>Any labels missing?</span>
+                    <button onClick={handleCreateNewLabelClick}>Create a new label!</button>
                 </div>
             </div>
             {highResImageModalVisible && (
@@ -185,9 +253,7 @@ function MainReportView() {
             )}
             {imageAnnotationModalVisible && (
                 ReactDOM.createPortal(
-                <ImageAnnotationModal labelName={imageAnnotationMetadata["label_name"]}
-                                      imageMetadata={imageAnnotationMetadata["image_metadata"]}
-                                      onClose={() => setImageAnnotationModalVisible(false)} />,
+                <ImageAnnotationModal metadata={imageAnnotationMetadata} onClose={() => setImageAnnotationModalVisible(false)} />,
                 document.body
                 )
             )}
