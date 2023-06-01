@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Tooltip } from 'react-tooltip';
 import MainReportView from './components/MainReportView';
 import styles from './App.css';
 import store from './store';
@@ -23,14 +24,14 @@ function App() {
         fetch(`${APP_NAME}/api/default_metadata`)
         // log server status
         .then((response) => {
-            console.log('Server status: ', response.status);
+            // console.log('Server status: ', response.status);
             return response;
         })
         .then((response) => response.json())
         .then((data) => { 
             report_data.set_metadata(data);
             setForceUpdate(!forceUpdate);
-            console.log('Success:', report_data);
+            // console.log('Success:', report_data);
         })
         .catch((error) => {
             console.error('Error fetching data:', error);
@@ -45,8 +46,11 @@ function App() {
             <div className={styles.content}>
                 <MainReportView />
             </div>
+            <div>
+                <Tooltip id="my-tooltip" positionStrategy="fixed" />
+            </div>
         </div>
     );
 }
   
-  export default App;
+export default App;

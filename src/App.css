@@ -3,6 +3,7 @@
     display: flex;
     /* align-items: stretch; */
     flex-direction: column;
+    /* overflow: hidden; */
 }
 .header {
     height: 60px

@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = 3001;
 const APP_NAME = 'cxr_annotations';
 
 // load some environment variables from .env file

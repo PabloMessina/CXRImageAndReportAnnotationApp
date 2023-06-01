@@ -1,79 +1,37 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styles from "./ImageAnnotationModal.css";
-import store from '../store';
-import { APP_NAME } from "../config";
+import store from "../store";
+import { drawPolygon } from "../drawing_utils";
+import ImageWrapper from "./ImageWrapper";
+import RoundQuestionButton from "./RoundQuestionButton";
+import { Tooltip } from 'react-tooltip';
 
 const labelNameSpanStyle = {
     'color': 'darkblue',
     'textDecoration': 'underline',
+    'fontWeight': 'bold',
+    'fontStyle': 'italic',
 };
+const color_blue = { 'color': 'blue', 'fontWeight': 'bold' };
+const color_red = { 'color': 'red', 'fontWeight': 'bold' };
 
-function drawPolygon(context, points, color, close = true, number = null) {
-    context.beginPath();
-    context.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-        context.lineTo(points[i][0], points[i][1]);
-    }
-    if (close) context.closePath();
-    context.lineWidth = 2;
-    context.strokeStyle = color;
-    context.stroke();
-    if (number !== null) {
-        // draw a number in the center of the polygon
-        let sumX = 0;
-        let sumY = 0;
-        for (let i = 0; i < points.length; i++) {
-            sumX += points[i][0];
-            sumY += points[i][1];
-        }
-        const centerX = sumX / points.length;
-        const centerY = sumY / points.length;
-        context.font = '30px Arial';
-        context.fillStyle = color;
-        context.fillText(number, centerX - 15, centerY);
-    }
-}
+const INSTRUCTIONS_TEXT = `Use the controls at the bottom of the image to zoom in and out and to move the image around.
 
-function drawScene(context, image, polygons, partialPolygon) {
-    context.drawImage(image, 0, 0);
-    for (let i = 0; i < polygons.length; i++) {
-        drawPolygon(context, polygons[i], 'red', true, i+1);
-    }
-    if (partialPolygon.length > 0) {
-        drawPolygon(context, partialPolygon, 'blue', false);
-    }
-}
+You can also zoom in and out with the mouse wheel or by pressing the + and - keys, and you can move the image around with the arrow keys.
 
-function euclideanDistance(x1, y1, x2, y2) {
-    return Math.sqrt(
-        (x1 - x2) * (x1 - x2) +
-        (y1 - y2) * (y1 - y2)
-    );
-}
+You can also reset the image to its original size and position by pressing 0 or with the ⟳ button at the bottom of the image.`;
 
-function getDeletePolygonButtonCallback(report_data, labelName, dicomId, index, setNumberOfPolygons,
-                                        canvasRef, imageRef, currentPolygonRef) {
+function getDeletePolygonButtonCallback(report_data, labelName, dicomId, index, force_update) {
     return () => {
         report_data.delete_polygon_for_gt_label(labelName, dicomId, index);
-        const polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
-        const context = canvasRef.current.getContext('2d');
-        const image = imageRef.current;
-        const currentPolygon = currentPolygonRef.current;
-        setNumberOfPolygons(polygon_list.length);
-        drawScene(context, image, polygon_list, currentPolygon);
+        force_update();
     };
 }
 
-function getDeletePolygonButtonCallback_CustomLabel(report_data, labelIndex, dicomId, index, setNumberOfPolygons,
-    canvasRef, imageRef, currentPolygonRef) {
+function getDeletePolygonButtonCallback_CustomLabel(report_data, labelIndex, dicomId, index, force_update) {
     return () => {
         report_data.delete_polygon_for_custom_label(labelIndex, dicomId, index);
-        const polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
-        const context = canvasRef.current.getContext('2d');
-        const image = imageRef.current;
-        const currentPolygon = currentPolygonRef.current;
-        setNumberOfPolygons(polygon_list.length);
-        drawScene(context, image, polygon_list, currentPolygon);
+        force_update();
     };
 }
 
@@ -85,157 +43,136 @@ function ImageAnnotationModal({ metadata, onClose }) {
     // If labelIndex is not undefined, then this is a custom label. Otherwise, it is a ground truth label.
     // Some logic will be different depending on whether this is a ground truth label or a custom label.
     const isGroundTruthLabel = labelIndex === undefined;
-    
+
     let labelName;
     if (isGroundTruthLabel) {
         labelName = metadata['label_name'];
+        // num_polygons = report_data.get_polygons_for_gt_label(labelName, imageMetadata['dicom_id']).length;
     } else {
         labelName = report_data.get_custom_label_name(labelIndex);
+        // num_polygons = report_data.get_polygons_for_custom_label(labelIndex, imageMetadata['dicom_id']).length;
+    }
+    // console.log(`ImageAnnotationModal: labelName = ${labelName}, metadata = ${JSON.stringify(metadata)}`);
+
+    if (imageMetadata['image_index'] === undefined) {
+        throw new Error("ImageAnnotationModal: imageMetadata['image_index'] is undefined");
     }
 
-    const { partId, subjectId, studyId, dicomId, viewPos } = imageMetadata;
-    const header_text = `High Resolution Image (viewPos: ${viewPos}, partId: ${partId}, ` +
-                        `subjectId: ${subjectId}, studyId: ${studyId}, dicomId: ${dicomId})`;
-    const imageUrl = `${APP_NAME}/api/images-large/${partId}/${subjectId}/${studyId}/${dicomId}`;    
+    const [ selectedImageIndex, setSelectedImageIndex ] = useState(imageMetadata['image_index']);
+    const [ maxWidthForSelectedImage, setMaxWidthForSelectedImage ] = useState(0);
+    const [ maxHeightForSelectedImage, setMaxHeightForSelectedImage ] = useState(0);
+    const [ forceUpdate, setForceUpdate ] = useState(false);
+    const viewportWrapperRef = useRef(null);
 
-    let polygon_list;
-    if (isGroundTruthLabel) {
-        polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
-    } else {
-        polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
-    }
-    // console.log(`isGroundTruthLabel: ${isGroundTruthLabel}`);
-    // console.log(`polygon_list: ${polygon_list}`);
-    
-    const canvasRef = useRef(null);
-    const imageRef = useRef(null);
-    const currentPolygonRef = useRef([]);
-    const [numberOfPolygons, setNumberOfPolygons] = useState(polygon_list.length);
+    const force_update = () => {
+        // console.log('Forcing update...');
+        setForceUpdate(!forceUpdate);
+    };
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        const image = new Image();
-        image.src = imageUrl;
-        image.onload = () => {
-            canvas.width = image.width;
-            canvas.height = image.height;
-            drawScene(context, image, polygon_list, currentPolygonRef.current);
-        };
-        imageRef.current = image;
-        
-        const handleMouseDown = event => {
-            // console.log(`handleMouseDown, event: ${event}`);
-            const { offsetX, offsetY } = event;
-            if (currentPolygonRef.current.length > 0) {
-                if (currentPolygonRef.current.length > 3) { // polygon must have at least 3 points
-                    // compute distance from first point to last point
-                    const [firstX, firstY] = currentPolygonRef.current[0];
-                    const dist_from_first = euclideanDistance(firstX, firstY, offsetX, offsetY);
-                    if (dist_from_first < 10) { // if close enough, then close the polygon
-                        const currentPolygon = currentPolygonRef.current.slice();
-                        currentPolygon.pop(); // remove last point, which is (approximately) the same as first point
-                        // add polygon to report data
-                        if (isGroundTruthLabel) {
-                            report_data.add_polygon_for_gt_label(labelName, dicomId, currentPolygon);
-                            polygon_list = report_data.get_polygons_for_gt_label(labelName, dicomId);
-                        } else {
-                            report_data.add_polygon_for_custom_label(labelIndex, dicomId, currentPolygon);
-                            polygon_list = report_data.get_polygons_for_custom_label(labelIndex, dicomId);
-                        }
-                        setNumberOfPolygons(polygon_list.length);
-                        // reset current polygon
-                        currentPolygonRef.current = [];
-                        // re-draw image with new polygon
-                        drawScene(context, image, polygon_list, currentPolygonRef.current);
-                        return;
-                    }
-                }
-                // check if new point is too close to any existing point
-                let too_close = false;
-                for (let i = 0; i < currentPolygonRef.current.length-1; i++) {
-                    const [x, y] = currentPolygonRef.current[i];
-                    const dist = euclideanDistance(x, y, offsetX, offsetY);
-                    if (dist < 10) {
-                        too_close = true;
-                        break;
-                    }
-                }
-                if (too_close) return;
-                // remove draggable point
-                currentPolygonRef.current.pop();
-                // add point to current polygon twice
-                currentPolygonRef.current.push([offsetX, offsetY]);
-                currentPolygonRef.current.push([offsetX, offsetY]); // the second point will be dragged around on mousemove
-                // re-draw image with new point
-                drawScene(context, image, polygon_list, currentPolygonRef.current);
-                return;
+        const resizeObserver = new ResizeObserver((entries) => {
+            if (viewportWrapperRef.current) {
+                const w = viewportWrapperRef.current.clientWidth;
+                const h = viewportWrapperRef.current.clientHeight;
+                setMaxWidthForSelectedImage(w);
+                setMaxHeightForSelectedImage(h);
             }
-            // add point to current polygon twice
-            currentPolygonRef.current.push([offsetX, offsetY]);
-            currentPolygonRef.current.push([offsetX, offsetY]); // the second point will be dragged around on mousemove
-            // re-draw image with new point
-            drawScene(context, image, polygon_list, currentPolygonRef.current);
-        };
-
-        const handleMouseMove = event => {
-            // console.log('handleMouseMove');
-            if (currentPolygonRef.current.length === 0) return;
-            const { offsetX, offsetY } = event;
-            // update last point in current polygon
-            currentPolygonRef.current[currentPolygonRef.current.length-1] = [offsetX, offsetY];
-            // re-draw image with new point
-            drawScene(context, image, polygon_list, currentPolygonRef.current);
-        };
-
-        const handleKeyDown = event => {
-            if (event.ctrlKey && event.key === 'z') {
-                event.preventDefault();
-                if (currentPolygonRef.current.length > 2) {
-                    const lastPoint = currentPolygonRef.current.pop();
-                    const secondLastPoint = currentPolygonRef.current.pop();
-                    if (euclideanDistance(lastPoint[0], lastPoint[1], secondLastPoint[0], secondLastPoint[1]) < 10) {
-                        // if last point is close enough to second last point, then remove the third last point
-                        currentPolygonRef.current.pop();
-                    }
-                    currentPolygonRef.current.push(lastPoint); // put the last point back in because
-                    // it's the one that's being dragged around on mousemove
-                } else {
-                    // empty current polygon
-                    currentPolygonRef.current = [];
-                }
-                // re-draw image with new point
-                drawScene(context, image, polygon_list, currentPolygonRef.current);
-            } else if (event.key === 'Escape') {
-                // empty current polygon
-                currentPolygonRef.current = [];
-                // re-draw image with new point
-                drawScene(context, image, polygon_list, currentPolygonRef.current);
-            }
-        };
-      
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('keydown', handleKeyDown);
-
+        });
+        if (viewportWrapperRef.current) {
+            resizeObserver.observe(viewportWrapperRef.current);
+        }
         return () => {
-            canvas.removeEventListener('mousedown', handleMouseDown);
-            canvas.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('keydown', handleKeyDown);
+            if (viewportWrapperRef.current) {
+                resizeObserver.unobserve(viewportWrapperRef.current);
+            }
         };
     }, []);
 
+    const dicom_id_view_pos_pairs = report_data.get_dicom_id_view_pos_pairs();
+    const partId = report_data.get_part_id();
+    const subjectId = report_data.get_subject_id();
+    const studyId = report_data.get_study_id();
+    const [dicomId, viewPos] = dicom_id_view_pos_pairs[selectedImageIndex];
+
+    const header_text = `High Resolution Image (viewPos: ${viewPos}, partId: ${partId}, ` +
+                        `subjectId: ${subjectId}, studyId: ${studyId}, dicomId: ${dicomId})`;
+
+    const getImageSelectedCallback = (index) => { return () => {
+        setSelectedImageIndex(index);
+    }};
+
+    const selected_image_metadata = report_data.get_image_metadata(selectedImageIndex);
+
+    const canvasDrawCallback = (canvas, temporary_polygon) => {
+        const canvas_width = canvas.width;
+        const canvas_height = canvas.height;
+        const context = canvas.getContext('2d');
+        let polygons;
+        if (isGroundTruthLabel) {
+            polygons = report_data.get_polygons_for_gt_label(labelName, dicomId, canvas_width, canvas_height);
+        } else {
+            polygons = report_data.get_polygons_for_custom_label(labelIndex, dicomId, canvas_width, canvas_height);
+        }
+        // console.log(`From ImageAnnotationModal: canvasDrawCallback: dicomId = ${dicomId}, polygons.length = ${polygons.length}, temporary_polygon = ${temporary_polygon}`);
+        context.clearRect(0, 0, canvas_width, canvas_height);
+        for (let i = 0; i < polygons.length; i++) {
+            const polygon = polygons[i];
+            drawPolygon(context, polygon, 'red', true, i+1);
+        }
+        if (temporary_polygon && temporary_polygon.length > 0) {
+            // temporary_polygon is in the range [0, 1] x [0, 1]
+            // We need to scale it to the canvas size.
+            temporary_polygon = temporary_polygon.map((point) => {
+                return [point[0] * canvas_width, point[1] * canvas_height];
+            });
+            drawPolygon(context, temporary_polygon, 'blue', false);
+        }
+    };
+
+    const onPolygonCreated = (polygon) => {
+        // console.log(`From ImageAnnotationModal: onPolygonCreated: polygon = ${polygon}`);
+        if (isGroundTruthLabel) {
+            report_data.add_polygon_for_gt_label(labelName, dicomId, polygon);
+        } else {
+            report_data.add_polygon_for_custom_label(labelIndex, dicomId, polygon);
+        }
+        force_update();
+    };
+
+    // list of images (thumbnails)
+    let image_list = [];
+    for (let i = 0; i < dicom_id_view_pos_pairs.length; i++) {
+        const [dicomId, viewPos] = dicom_id_view_pos_pairs[i];
+        const image_metadata = report_data.get_image_metadata(i);
+        const class_name = (i === selectedImageIndex) ? styles['image-list-item-selected'] : styles['image-list-item'];
+        image_list.push(
+            <div key={dicomId} onClick={getImageSelectedCallback(i)} className={class_name}>
+                <ImageWrapper maxWidth={100} maxHeight={100} useAllSpace={true}
+                              metadata={image_metadata} size="small"/>
+                <span className={styles['image-list-item-span']}>{(i+1)}) {viewPos}</span>
+            </div>
+        );
+    }
+
+    // determine the number of polygons for the label
+    let num_polygons;
+    const selected_dicom_id = report_data.get_dicom_id(selectedImageIndex);
+    if (isGroundTruthLabel) {
+        num_polygons = report_data.get_polygons_for_gt_label(labelName, selected_dicom_id).length;
+    } else {
+        labelName = report_data.get_custom_label_name(labelIndex);
+        num_polygons = report_data.get_polygons_for_custom_label(labelIndex, selected_dicom_id).length;
+    }
+    // list of delete polygon buttons
     let deletePolygonButtons = [];
-    for (let i = 0; i < numberOfPolygons; i++) {
+    for (let i = 0; i < num_polygons; i++) {
         let callback;
         if (isGroundTruthLabel) {
             callback = getDeletePolygonButtonCallback(
-                report_data, labelName, dicomId, i, setNumberOfPolygons,
-                canvasRef, imageRef, currentPolygonRef);
+                report_data, labelName, dicomId, i, force_update);
         } else {
             callback = getDeletePolygonButtonCallback_CustomLabel(
-                report_data, labelIndex, dicomId, i, setNumberOfPolygons,
-                canvasRef, imageRef, currentPolygonRef);
+                report_data, labelIndex, dicomId, i, force_update);
         }
         deletePolygonButtons.push(
             <button key={i} onClick={callback}>Delete Polygon {i+1}</button>
@@ -246,26 +183,45 @@ function ImageAnnotationModal({ metadata, onClose }) {
     if (labelNameToShow === '') {
         labelNameToShow = '<unknown_label>';
     }
-    
+
     return (
         <div className={styles["modal-overlay"]}>
             <div className={styles["modal-content"]}>
                 <div className={styles["modal-header"]}> {header_text} </div>
                 <div className={styles["modal-body"]}>
-                    <div className={styles["split-container"]}>
-                        <div className={styles["sidebar"]}>
-                            <h3>Finding visual evidence for <span style={labelNameSpanStyle}>{labelNameToShow}</span> label</h3>
-                            <h3>Instructions</h3>
-                            <span>
-                                Click to add points and draw polygons around areas where <span style={labelNameSpanStyle}>{labelNameToShow}</span> is present.
-                                Use Ctrl-Z to undo individual points. Use Esc to fully clear current polygon.
-                            </span>
-                            <h3>Number of polygons: {numberOfPolygons}</h3>
-                            {deletePolygonButtons}
-                        </div>
-                        <div className={styles["canvas-container"]}>
-                            <canvas ref={canvasRef} />
-                        </div>
+                    <div className={styles["modal-body-left"]}>
+                        <h3>Finding visual evidence for <span style={labelNameSpanStyle}>{labelNameToShow}</span> label</h3>
+                        <h3>Instructions</h3>
+                        Click to add points and draw polygons around areas in the image where the label <span style={labelNameSpanStyle}>{labelNameToShow}</span> can
+                        be seen. While editing the current polygon (<span style={color_blue}>color blue</span>), you can drag around the
+                        last point added. You can also use Ctrl-Z to undo the last point, or Esc to fully clear the current polygon.
+                        If you close the blue polygon, it will be added to the list of polygons (<span style={color_red}>color red</span>).
+                        <h3>Number of polygons: {num_polygons}</h3>
+                        {deletePolygonButtons}
+                    </div>
+                    <div className={styles["modal-body-center"]} ref={viewportWrapperRef}>
+                        <ImageWrapper
+                            metadata={selected_image_metadata}
+                            size="large"
+                            imageId={selectedImageIndex}
+                            className={styles['modal-selected-image']}
+                            canvasDrawCallback={canvasDrawCallback}
+                            maxWidth={maxWidthForSelectedImage}
+                            maxHeight={maxHeightForSelectedImage}
+                            useAllSpace={true}
+                            allowZoomingInAndOut={true}
+                            allowDrawingPolygons={true}
+                            onPolygonCreated={onPolygonCreated}
+                        />
+                        <RoundQuestionButton
+                            className={styles['modal-question-button']}
+                            tooltip_message={INSTRUCTIONS_TEXT}
+                            data_tooltip_id={"high-res-image-modal-tooltip"}
+                        />
+                    </div>
+                    <div className={styles["modal-body-right"]}>
+                        {image_list}
+                        <Tooltip id="high-res-image-modal-tooltip" positionStrategy="fixed" />
                     </div>
                 </div>
             </div>

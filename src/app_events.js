@@ -4,6 +4,8 @@ const APP_EVENTS = {
     LABEL_MOUSE_LEAVE: 'label_mouse_leave',
     ANNOTATE_IMAGE: 'annotate_image',
     ANNOTATE_IMAGE_CUSTOM_LABEL: 'annotate_image_custom_label',
+    POLYGONS_UPDATED: 'polygons_updated',
+    CUSTOM_LABEL_NAME_CHANGED: 'custom_label_name_changed',
 };
 
 // console.log('App events: ', APP_EVENTS);
@@ -21,12 +23,17 @@ function subscribe_to_event(event, callback) {
 }
 function unsubscribe_from_event(event, callback) {
     // console.log(`Unsubscribing from event: ${event}`);
+    const size_before = callbacks[event].size;
     callbacks[event].delete(callback);
+    const size_after = callbacks[event].size;
+    if (size_before === size_after) {
+        throw new Error(`Callback not found for event: ${event}, callback: ${callback}`);
+    }
 }
 
 // Define function to emit events
 function emit_event(event, ...args) {
-    // console.log(`Emitting event: ${event}`);
+    // console.log(`Emitting event ${event} for ${callbacks[event].size} callbacks`);
     callbacks[event].forEach(callback => callback(...args));
 }
 

@@ -1,24 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import Image from './Image';
 import Label from './Label';
 import CustomLabel from './CustomLabel';
 import HighlightableText from './HighlightableText';
 import styles from './MainReportView.css';
 import { APP_EVENTS, subscribe_to_event, unsubscribe_from_event } from '../app_events';
-import RoundQuestionButton from './RoundQuestionButton';
 import AgreementRadioButtons from './AgreementRadioButtons';
 import HighResImageModal from './HighResImageModal';
 import ImageAnnotationModal from './ImageAnnotationModal';
+import RoundQuestionButton from './RoundQuestionButton';
+import FeedbackForLabel from './FeedbackForLabel';
+import ImagesDisplayer from './ImagesDisplayer';
 import store from '../store';
 
-const LABEL_NAMES = ['chexpert_labels', 'chest_imagenome_labels', 'common_labels'];
 const CHEXPERT_LINK = "https://github.com/stanfordmlgroup/chexpert-labeler";
 const CHEST_IMAGENOME_LINK = "https://physionet.org/content/chest-imagenome/1.0.0/";
 
+const MISSING_LABELS_TOOLTIP_MESSAGE = (
+    "By missing labels we mean noteworthy findings, abnormalities, anomalies, patterns, devices, etc., which are visible in the images(s)" +
+    " but that the automatic labelers failed to detect and/or the report omitted. " +
+    "We added this feature because both the automatic tools and the report are not necessarily perfect and may have missed something."
+);
+
 const round_question_button_style = {
     display: 'inline-block',
-    marginLeft: '5px',
 };
 
 function MainReportView() {
@@ -31,15 +36,15 @@ function MainReportView() {
     const [reportAccuracy, setReportAccuracy] = useState(report_data.get_report_accuracy());
     const [reportCompleteness, setReportCompleteness] = useState(report_data.get_report_completeness());
     const [reportComment, setReportComment] = useState(report_data.get_report_comment());
+    const [impressionAccuracy, setImpressionAccuracy] = useState(report_data.get_impression_accuracy());
     // State associated with GUI interactions
     const [reportIndexPairList, setReportIndexPairList] = useState([]);
     const [highResImageModalVisible, setHighResImageModalVisible] = useState(false);
-    const [highResImageMetadata, setHighResImageMetadata] = useState(null);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(null);
     const [imageAnnotationModalVisible, setImageAnnotationModalVisible] = useState(false);
     const [imageAnnotationMetadata, setImageAnnotationMetadata] = useState(null);
     const [forceUpdate, setForceUpdate] = useState(false);
-
-    const scrollableDivRef = useRef(null);
+    const scrollContainerRef = useRef(null);
 
     useEffect(() => {
         const handleLabelMouseEnter = (label_name, index_pair_list) => {
@@ -81,6 +86,11 @@ function MainReportView() {
         setReportAccuracy(event.target.value);
     };
 
+    const handleImpressionAccuracyChange = (event) => {
+        report_data.set_impression_accuracy(event.target.value);
+        setImpressionAccuracy(event.target.value);
+    };
+
     const handleReportCompletenessChange = (event) => {
         report_data.set_report_completeness(event.target.value);
         setReportCompleteness(event.target.value);
@@ -97,10 +107,20 @@ function MainReportView() {
         setForceUpdate(!forceUpdate);
         // Scroll to the bottom of the scrollable div, but only after the DOM has been updated
         setTimeout(() => {
-            scrollableDivRef.current.scrollTop = scrollableDivRef.current.scrollHeight;
-            // scroll upwards a bit to make the new label visible
-            scrollableDivRef.current.scrollTop -= 200;
+            const id = report_data.get_last_custom_label_id();
+            const elem = document.querySelector(`#custom_label_${id}`);
+            const scrollHeight = scrollContainerRef.current.scrollHeight;
+            const elemHeight = elem.getBoundingClientRect().height;
+            scrollContainerRef.current.scrollTo({
+                top: scrollHeight - elemHeight - 100,
+                behavior: 'smooth'
+            });
         }, 0);
+    };
+
+    const handleExpandImageClick = (image_index) => {
+        setSelectedImageIndex(image_index);
+        setHighResImageModalVisible(true);
     };
 
     const getOnDeleteCustomLabelHandler = (label_index) => {
@@ -110,53 +130,27 @@ function MainReportView() {
             setForceUpdate(!forceUpdate);
         };
     };
-
-    // Define a list of images
-    let images = [];
+    
     let image_metadata_list = [];
-
     // check if metadata has property dicom_id_view_pos_pairs
     const dicom_id_view_pos_pairs = report_data.get_dicom_id_view_pos_pairs();
-    // console.log('DEBUG');
-    // console.log('dicom_id_view_pos_pairs', dicom_id_view_pos_pairs);
-    // console.log('report_data', report_data);
-    // console.log('report_data._metadata', report_data._metadata);
-    // console.log('report_data._annotations', report_data._annotations);
-
     if (dicom_id_view_pos_pairs !== undefined) {
-        const partId = report_data.get_part_id();
-        const subjectId = report_data.get_subject_id();
-        const studyId = report_data.get_study_id();
         // define a list of images with dicom_ids as props
         for (let i = 0; i < dicom_id_view_pos_pairs.length; i++) {
-            const [dicomId, viewPos] = dicom_id_view_pos_pairs[i];
-            image_metadata_list.push({ partId, subjectId, studyId, dicomId, viewPos });
-            const image_metadata = image_metadata_list[i];
-            images.push(
-                <div key={dicomId}>
-                    <p>ViewPos: {viewPos}, dicomId: {dicomId}</p>
-                    <Image metadata={image_metadata} size="medium" expandCallback={() => {
-                        setHighResImageMetadata(image_metadata);
-                        setHighResImageModalVisible(true);
-                    }} />
-                </div>
-            );
+            image_metadata_list.push(report_data.get_image_metadata(i));
         }
     }
-    const image_text = `Images (${images.length}):`;
+    
     // Labels
-    let labels_list = [[], [], []];
-    for (let i = 0; i < 3; i++) {
-        const label_data = report_data.get_label_data(LABEL_NAMES[i]);
-        if (label_data !== undefined) {
-            const keys = Object.keys(label_data);
-            keys.sort();
-            for (let j = 0; j < keys.length; j++) {
-                const label = keys[j];
-                const indexes = label_data[label];
-                labels_list[i].push(<Label key={label} name={label} indexes={indexes}
-                                           image_metadata_list={image_metadata_list}/>);
-            }
+    let labels_list = [];
+    const label_data = report_data.get_label_data();
+    if (label_data !== undefined) {
+        // console.log('label_data', label_data);
+        for (let i = 0; i < label_data.length; i++) {
+            const label = label_data[i]['name'];
+            const indexes = label_data[i]['ranges'];
+            labels_list.push(<Label key={label} name={label} indexes={indexes}
+                image_metadata_list={image_metadata_list}/>);
         }
     }
     // Custom labels (added by the user)
@@ -173,32 +167,42 @@ function MainReportView() {
     return (
         <div className={styles['container']}>
             <div className={styles['left-column']}>
-                <div className={styles['images-container-wrapper']}>
+                {/* <ImagesDisplayer width={'500px'} height={'600px'} /> */}
+                {/* <ImagesDisplayerWrapper expandCallback={handleExpandImageClick} /> */}
+                <ImagesDisplayer expandCallback={handleExpandImageClick} />
+                {/* <div className={styles['images-container-wrapper']}>
                     <h2>{image_text}</h2>
                     <div className={styles['images-container']}>
                         {images}
                     </div>
-                </div>
+                </div> */}
             </div>
             <div className={styles['middle-column']}>
                 <div className={styles['report-container-wrapper']}>
-                    <h2>Report:</h2>
-                    <span> Filepath: {report_data.get_report_filepath()} </span>
+                    <span className={styles['report-title-span']}>Report</span>
+                    <span className={styles['filepath-span']}> Filepath: {report_data.get_report_filepath()} </span>
                     <HighlightableText className={styles['report-container']}
                         text={report_data.get_original_report()} index_pair_list={reportIndexPairList} />
-                    <br />
+                    <h3>General questions about the report:</h3>
                     <div className={styles['report-question-wrapper']}>
-                        <b>How accurate is this report?</b>
+                        <FeedbackForLabel reportFieldName="report_accuracy" className={styles['upper-right-corner-feedback']} />
+                        <b>Is the information provided by the report accurate?</b>
                         <AgreementRadioButtons name="report_accuracy" agreement={reportAccuracy}
-                                            handleAgreementChange={handleReportAccuracyChange}
-                                            percent_list={["0%", "25%", "50%", "75%", "100%"]} />
+                                            handleAgreementChange={handleReportAccuracyChange}/>
                     </div>
                     <br />
                     <div className={styles['report-question-wrapper']}>
-                        <b>How complete is this report?</b>
+                        <FeedbackForLabel reportFieldName="report_completeness" className={styles['upper-right-corner-feedback']} />
+                        <b>Is the report exhaustive/complete (i.e. does it mention all the findings/abnormalities present in the image(s))?</b>
                         <AgreementRadioButtons name="report_completeness" agreement={reportCompleteness}
-                                            handleAgreementChange={handleReportCompletenessChange}
-                                            percent_list={["0%", "25%", "50%", "75%", "100%"]} />
+                                            handleAgreementChange={handleReportCompletenessChange}/>
+                    </div>
+                    <br />
+                    <div className={styles['report-question-wrapper']}>
+                        <FeedbackForLabel reportFieldName="impression_accuracy" className={styles['upper-right-corner-feedback']} />
+                        <b>Does the <i>impression</i> section provide an accurate and relevant conclusion to the report, given the reason of the exam?</b>
+                        <AgreementRadioButtons name="impression_accuracy" agreement={impressionAccuracy}
+                                            handleAgreementChange={handleImpressionAccuracyChange}/>
                     </div>
                     <br />
                     <div className={styles['report-question-wrapper']}>
@@ -210,25 +214,21 @@ function MainReportView() {
                 </div>
             </div>
             <div className={styles['right-column']}>
-                <div className={styles['labels-header']}>
-                    <h2>Labels:</h2>
-                </div>
-                <div className={styles['labels-container']} ref={scrollableDivRef}>
+                <div className={styles['labels-container']} ref={scrollContainerRef}>
+                    <span className={styles['labels-title-span']}>Labels</span>
                     <div>
-                        <span className={styles['label-span']}>Labels detected only by CheXpert ({labels_list[0].length})
-                            <RoundQuestionButton link={CHEXPERT_LINK} style={round_question_button_style} />
+                        <span className={styles['label-span']}>
+                            {labels_list.length} label{labels_list.length > 0 ? 's' : ''} extracted from the report with automatic tools
                         </span>
-                        {labels_list[0]}
-                    </div>
-                    <div>
-                        <span className={styles['label-span']}>Labels detected only by Chest ImaGenome ({labels_list[1].length})
-                            <RoundQuestionButton link={CHEST_IMAGENOME_LINK} style={round_question_button_style} />
+                        <span className={styles['label-description-span']}>
+                            <i>Learn more about how the labels were obtained:
+                                <br />
+                                <a href={CHEXPERT_LINK} target="_blank" rel="noopener noreferrer">CheXpert Labeler</a>
+                                <span> | </span>
+                                <a href={CHEST_IMAGENOME_LINK} target="_blank" rel="noopener noreferrer">Chest ImaGenome</a>
+                            </i>
                         </span>
-                        {labels_list[1]}
-                    </div>
-                    <div>
-                        <span className={styles['label-span']}>Labels detected by both labelers ({labels_list[2].length})</span>
-                        {labels_list[2]}
+                        {labels_list}
                     </div>
                     {
                         custom_labels_list.length > 0 && (
@@ -243,11 +243,15 @@ function MainReportView() {
                 <div className={styles['labels-missing-container']}>
                     <span>Any labels missing?</span>
                     <button onClick={handleCreateNewLabelClick}>Create a new label!</button>
+                    <RoundQuestionButton
+                        style={round_question_button_style}
+                        tooltip_message={MISSING_LABELS_TOOLTIP_MESSAGE}
+                    />
                 </div>
             </div>
             {highResImageModalVisible && (
                 ReactDOM.createPortal(
-                <HighResImageModal imageMetadata={highResImageMetadata} onClose={() => setHighResImageModalVisible(false)} />,
+                <HighResImageModal imageIndex={selectedImageIndex} onClose={() => setHighResImageModalVisible(false)} />,
                 document.body
                 )
             )}

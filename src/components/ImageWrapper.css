@@ -1,0 +1,99 @@
+.image-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+.expand-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* make background partially transparent */
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    border: none;
+    color: yellow;
+    cursor: pointer;
+    font-size: 20px;
+    z-index: 1;
+}
+.image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    max-height: 100%;
+}
+.canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    max-height: 100%;
+    z-index: 0;
+}
+.zoom-button {
+    position: absolute;
+    bottom: 5px;
+    background-color: rgba(92, 88, 88, 0.5);
+    width: 34px;
+    height: 34px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: yellow;
+    cursor: pointer;
+    font-size: 25px;
+    z-index: 1;
+    text-align: center;
+    line-height: 30px;
+}
+.zoom-in-button {
+    left: calc(50% - 51px);
+}
+.zoom-out-button {
+    left: calc(50% - 17px);
+}
+.reset-zoom-button {
+    left: calc(50% + 17px);
+}
+.translation-arrow-buttons-container {
+    position: absolute;
+    bottom: 0px;
+    width: 49px;
+    height: 49px;
+    left: calc(50% + 53px);
+    z-index: 1;
+}
+.translation-arrow-buttons-middle {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.translation-arrow-button {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    background-color: red;
+}
+.translation-arrow-button-down {
+    top: 0px;
+    left: calc(50% - 8px);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+.translation-arrow-button-up {
+    bottom: 0px;
+    left: calc(50% - 8px);
+    clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+}
+.translation-arrow-button-right {
+    top: calc(50% - 8px);
+    left: 0px;
+    clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
+}
+.translation-arrow-button-left {
+    top: calc(50% - 8px);
+    right: 0px;
+    clip-path: polygon(100% 50%, 0% 0%, 0% 100%);
+}

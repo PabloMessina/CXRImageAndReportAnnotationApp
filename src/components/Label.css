@@ -1,8 +1,12 @@
 .label {
     padding: 0.5em;
+    padding-top: 0.9em;
     background-color: azure;
     margin-top: 1em;
-    margin-bottom: 1em;
+    /* margin-bottom: 1em; */
+    border-radius: 0.5em;
+    border: 1px solid black;
+    position: relative;
 }
 .label-name {
     font-weight: bold;
@@ -12,6 +16,45 @@
     /* underline text */
     text-decoration: underline;
 }
+.custom-label-name {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 0.5em;
+}
+.label-name-toggle-button {
+    margin-left: 5px;
+    width: auto;
+    height: auto;
+    font-size: 12px;
+    color: darkblue;
+    cursor: pointer;
+}
+.label-content-open {
+    display: block;
+}
+.label-content-closed {
+    display: none;
+}
 .add-margin-top {
     margin-top: 1em;
+}
+.question {
+    margin-top: 20px;
+    font-weight: bold;
+    font-size: medium;
+    /* font-size: 1.2em; */
+    /* font color */
+    /* underline text */
+    /* text-decoration: underline; */
+}
+.textarea {
+    height: 40px;
+    width: 98%;
+    resize: none;
+    font-size: 1.2em;
+}
+.upper-right-corner-feedback {
+    position: absolute;
+    top: -2px;
+    right: 3px;
 }

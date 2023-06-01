@@ -2,7 +2,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 1000;
+    z-index: 1;
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.5);
@@ -12,9 +12,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90%;
-    height: 90%;
-    z-index: 1001;
+    width: 95%;
+    height: 92%;
+    z-index: 2;
     background-color: white;
     padding: 20px;
     border-radius: 5px;
@@ -29,17 +29,73 @@
 }
 .modal-body {
     flex-grow: 1;
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    padding: 3px;
+}
+.modal-body-left {
+    position: relative;
+    width: calc(100% - 120px);
+}
+.modal-selected-image {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    border: 2px solid lightgray;
+    /* object-fit: contain; */
+}
+.modal-canvas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+.modal-body-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    width: 120px;
+    height: calc(100% - 6px);
+    padding: 5px;
+    background-color: lightgray;
+}
+.image-list-item {
+    display: flex;
+    flex-direction: column;
+    padding: 3px;
+    height: 130px;
+    border: 4px solid transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: white;
+}
+.image-list-item-selected {
+    display: flex;
+    flex-direction: column;
+    padding: 3px;
+    height: 130px;
+    border: 4px solid yellow;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: white;
 }
 .upper-right-corner-fixed-button {
     position: fixed;
-    top: calc(5% - 15px);
-    right: calc(5% - 15px);
-    z-index: 1002;
+    top: calc(4% - 15px);
+    right: calc(3% - 15px);
+    z-index: 3;
     background-color: white;
     border: none;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
     padding: 5px;
     cursor: pointer;
+}
+.modal-question-button {
+    position: absolute;
+    bottom: 7px;
+    left: calc(50% + 120px);
+    transform: scale(1.5);
 }

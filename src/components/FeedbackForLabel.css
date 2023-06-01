@@ -1,0 +1,8 @@
+.complete {
+    color: #4caf50;
+    font-size: small;
+}
+.incomplete {
+    color: #f44336;
+    font-size: small;
+}

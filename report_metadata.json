@@ -15,6 +15,16 @@
             "PA"
         ]
     ],
+    "original_image_sizes": {
+        "00138842-345f9558-d5aa2910-6a2692e2-1c14906e": [
+            2544,
+            3056
+        ],
+        "602eebfa-bf8aa213-d37388e6-0f614fb1-12e5e8e3": [
+            2544,
+            3056
+        ]
+    },
     "original_report": "                                 FINAL REPORT\n INDICATION:  ___F with bradycardia, dyspnea, diarrhea  // eval ? effusion,\n infiltrate\n \n TECHNIQUE:  PA and lateral views the chest.\n \n COMPARISON:  ___.\n \n FINDINGS: \n \n There are small bilateral pleural effusions.  Lungs are otherwise clear\n without focal consolidation or edema.  There is mild cardiomegaly and\n atherosclerotic calcifications of the aortic arch.  Compression deformity in\n the mid thoracic spine is similar compared to prior.\n \n IMPRESSION: \n \n Small bilateral pleural effusions.\n",
     "chexpert_labels": {
         "cardiomegaly": [

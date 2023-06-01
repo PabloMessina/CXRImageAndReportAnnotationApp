@@ -5,11 +5,17 @@
 }
 .left-column {
     width: 33%;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
     padding: 3px;
+    overflow: hidden;
 }
 .middle-column {
     width: 37%;
     padding: 3px;
+    margin-right: 14px;
     height: 100%;
     display: flex;
     align-items: center;
@@ -34,9 +40,20 @@
     max-height: 100%;
 }
 .report-container {
-    overflow: auto;
-    max-width: 100%;
-    max-height: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    padding: 5px;
+    background-color: rgb(246, 246, 219); /* #f5f5f5; */
+}
+.report-title-span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 .report-container-wrapper {
     display: flex;
@@ -45,13 +62,21 @@
     width: 100%;
 }
 .report-comment-textarea {
+    height: 100px;
     width: 98%;
-    height: 100%;
     resize: none;
     /* border: none; */
     /* outline: none; */
     font-size: 1.2em;
-    padding: 5px;
+    /* padding: 5px; */
+}
+.labels-title-span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 .label-span {
     display: inline-block;
@@ -61,6 +86,11 @@
     font-weight: bold;
     margin-bottom: 5px;    
 }
+.label-description-span {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
 .custom-label-span {
     display: inline-block;
     width: 100%;
@@ -68,6 +98,7 @@
     font-size: 1.5em;
     font-weight: bold;
     margin-bottom: 5px;
+    margin-top: 1em;
     color: red;
 }
 .labels-header {
@@ -81,10 +112,13 @@
     overflow: auto;
 }
 .labels-missing-container {
-    height: 30px;
+    display: inline-block;
     padding: 5px;
-    margin-top: 5px;
+    margin-top: 8px;
     background-color: lightgoldenrodyellow;
+    border: 2px solid black;
+    border-radius: 5px;
+    text-align: center;
 }
 .labels-missing-container > span {
     font-size: 1.2em;
@@ -99,4 +133,18 @@
 }
 .report-question-wrapper {
     background-color: azure;
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    padding: 5px;
+    padding-top: 15px;
+    position: relative;
+}
+.filepath-span {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+.upper-right-corner-feedback {
+    position: absolute;
+    top: -2px;
+    right: 3px;
 }
