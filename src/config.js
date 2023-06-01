@@ -1,3 +1,3 @@
-const APP_NAME = 'cxr_annotations';
+const APP_NAME = 'cxr_annotations_v2';
 
 export { APP_NAME };

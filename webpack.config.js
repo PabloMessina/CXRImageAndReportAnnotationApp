@@ -44,6 +44,7 @@ module.exports = ({ mode } = { mode: "production" }) => {
             proxy: {
                 '/api': 'http://localhost:3001',
                 '/cxr_annotations/api': 'http://localhost:3001',
+                '/cxr_annotations_v2/api': 'http://localhost:3001',
             },
         },
     };

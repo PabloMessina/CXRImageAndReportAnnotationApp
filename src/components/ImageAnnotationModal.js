@@ -104,6 +104,7 @@ function ImageAnnotationModal({ metadata, onClose }) {
     const selected_image_metadata = report_data.get_image_metadata(selectedImageIndex);
 
     const canvasDrawCallback = (canvas, temporary_polygon) => {
+        // console.log(`From ImageAnnotationModal: canvasDrawCallback: dicomId = ${dicomId}, temporary_polygon = ${temporary_polygon}`);
         const canvas_width = canvas.width;
         const canvas_height = canvas.height;
         const context = canvas.getContext('2d');
@@ -138,6 +139,18 @@ function ImageAnnotationModal({ metadata, onClose }) {
         }
         force_update();
     };
+
+    const onLastPolygonDeleted = () => {
+        let last_polygon;
+        if (isGroundTruthLabel) {
+            last_polygon = report_data.pop_last_polygon_for_gt_label(labelName, dicomId);
+        } else {
+            last_polygon = report_data.pop_last_polygon_for_custom_label(labelIndex, dicomId);
+        }
+        if (last_polygon) force_update();
+        return last_polygon;
+    };
+
 
     // list of images (thumbnails)
     let image_list = [];
@@ -211,7 +224,9 @@ function ImageAnnotationModal({ metadata, onClose }) {
                             useAllSpace={true}
                             allowZoomingInAndOut={true}
                             allowDrawingPolygons={true}
+                            drawingForGroundTruthLabel={isGroundTruthLabel}
                             onPolygonCreated={onPolygonCreated}
+                            onLastPolygonDeleted={onLastPolygonDeleted}
                         />
                         <RoundQuestionButton
                             className={styles['modal-question-button']}

@@ -1,10 +1,6 @@
 import { cloneDeep } from "lodash";
 import { APP_EVENTS, emit_event } from "./app_events";
 
-function get_current_timestamp() {
-    return new Date().getTime();
-}
-
 let CUSTOM_LABEL_ID = 0;
 
 const LABEL_CATEGORIES = ['chexpert_labels', 'chest_imagenome_labels', 'common_labels'];
@@ -191,7 +187,6 @@ class ReportData {
     constructor(metadata={}, annotations={}) {
         this._metadata = metadata;
         this._annotations = cloneDeep(annotations);
-        this._last_edit_timestamp = get_current_timestamp();
         this.sort_dicom_id_view_pos_pairs();
     }
     sort_dicom_id_view_pos_pairs() {
@@ -200,9 +195,6 @@ class ReportData {
                 return map_view_position_to_score(a[1]) - map_view_position_to_score(b[1]);
             });
         }            
-    }
-    get_last_edit_timestamp() {
-        return this._last_edit_timestamp;
     }
     get_custom_label_options() {
         let unused_label_names = new Set(MERGED_LABEL_NAMES);
@@ -238,7 +230,6 @@ class ReportData {
     set_metadata(metadata) {
         this._metadata = metadata;
         this.sort_dicom_id_view_pos_pairs();
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_report_filepath() {
         return this._metadata["report_filepath"];
@@ -370,28 +361,24 @@ class ReportData {
     }
     set_report_accuracy(report_accuracy) {
         this._annotations["report_accuracy"] = report_accuracy;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_impression_accuracy() {
         return this._annotations["impression_accuracy"];
     }
     set_impression_accuracy(impression_accuracy) {
         this._annotations["impression_accuracy"] = impression_accuracy;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_report_completeness() {
         return this._annotations["report_completeness"];
     }
     set_report_completeness(report_completeness) {
         this._annotations["report_completeness"] = report_completeness;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_report_comment() {
         return this._annotations["report_comment"];
     }
     set_report_comment(report_comment) {
         this._annotations["report_comment"] = report_comment;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_agreement_for_gt_label(label_name) {
         // console.log(`====== from get_agreement_for_gt_label (label_name: ${label_name}) ======`);
@@ -411,14 +398,12 @@ class ReportData {
         // console.log(`Set agreement for ${label_name} to ${agreement}`);
         // console.log(this._annotations["agreement_for_gt_label"]);
         // console.log('======');
-        this._last_edit_timestamp = get_current_timestamp();
     }
     set_text_agreement_for_gt_label(label_name, agreement) {
         if (!this._annotations.hasOwnProperty("text_agreement_for_gt_label")) {
             this._annotations["text_agreement_for_gt_label"] = {};
         }
         this._annotations["text_agreement_for_gt_label"][label_name] = agreement;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_text_agreement_for_gt_label(label_name) {
         // console.log(`====== from get_text_agreement_for_gt_label (label_name: ${label_name}) ======`);
@@ -446,7 +431,6 @@ class ReportData {
             this._annotations["has_grounding_for_gt_label"][label_name] = {};
         }
         this._annotations["has_grounding_for_gt_label"][label_name][dicom_id] = has_grounding;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_label_source_for_gt_label(label_name) {
         if (!this._annotations.hasOwnProperty("label_source_for_gt_label") ||
@@ -460,7 +444,6 @@ class ReportData {
             this._annotations["label_source_for_gt_label"] = {};
         }
         this._annotations["label_source_for_gt_label"][label_name] = label_source;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_polygons_for_gt_label(label_name, dicom_id, target_width=1, target_height=1) {
         if (!this._annotations.hasOwnProperty("polygons_for_gt_label") ||
@@ -489,7 +472,6 @@ class ReportData {
             this._annotations["polygons_for_gt_label"][label_name][dicom_id] = [];
         }
         this._annotations["polygons_for_gt_label"][label_name][dicom_id].push(polygon);
-        this._last_edit_timestamp = get_current_timestamp();
         emit_event(APP_EVENTS.POLYGONS_UPDATED);
     }
     delete_polygon_for_gt_label(label_name, dicom_id, polygon_index) {
@@ -500,8 +482,21 @@ class ReportData {
             return;
         }
         this._annotations["polygons_for_gt_label"][label_name][dicom_id].splice(polygon_index, 1);
-        this._last_edit_timestamp = get_current_timestamp();
         emit_event(APP_EVENTS.POLYGONS_UPDATED);
+    }
+    pop_last_polygon_for_gt_label(label_name, dicom_id, delay_emit_event=false) {
+        if (!this._annotations.hasOwnProperty("polygons_for_gt_label") ||
+            !this._annotations["polygons_for_gt_label"].hasOwnProperty(label_name) ||
+            !this._annotations["polygons_for_gt_label"][label_name].hasOwnProperty(dicom_id)) {
+            return undefined;
+        }
+        const last_polygon = this._annotations["polygons_for_gt_label"][label_name][dicom_id].pop();
+        if (!delay_emit_event) {
+            emit_event(APP_EVENTS.POLYGONS_UPDATED);
+        } else {
+            setTimeout(() => emit_event(APP_EVENTS.POLYGONS_UPDATED), 0);
+        }
+        return last_polygon;
     }
     get_custom_labels() {
         if (!this._annotations.hasOwnProperty("custom_labels")) {
@@ -522,7 +517,6 @@ class ReportData {
             "id": CUSTOM_LABEL_ID
         });
         CUSTOM_LABEL_ID += 1;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_custom_label_id(label_index) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -588,7 +582,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["label_name"] = label_name;
-        this._last_edit_timestamp = get_current_timestamp();
         // console.log("Emitting event: " + APP_EVENTS.CUSTOM_LABEL_NAME_CHANGED);
         emit_event(APP_EVENTS.CUSTOM_LABEL_NAME_CHANGED);
     }
@@ -598,7 +591,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["label_description"] = label_description;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     set_agreement_for_custom_label(label_index, agreement) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -606,7 +598,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["agreement"] = agreement;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     set_found_in_report_for_custom_label(label_index, found_in_report) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -614,7 +605,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["found_in_report"] = found_in_report;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     set_has_grounding_for_custom_label(label_index, dicom_id, has_grounding) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -628,7 +618,6 @@ class ReportData {
             this._annotations["custom_labels"][label_index]["grounding"][dicom_id] = {};
         }
         this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["has_grounding"] = has_grounding;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_polygons_for_custom_label(label_index, dicom_id, target_width=1, target_height=1) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -709,7 +698,6 @@ class ReportData {
             this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["polygons"] = [];
         }
         this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["polygons"].push(polygon);
-        this._last_edit_timestamp = get_current_timestamp();
         emit_event(APP_EVENTS.POLYGONS_UPDATED);
     }
     delete_polygon_for_custom_label(label_index, dicom_id, polygon_index) {
@@ -722,8 +710,25 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["polygons"].splice(polygon_index, 1);
-        this._last_edit_timestamp = get_current_timestamp();
         emit_event(APP_EVENTS.POLYGONS_UPDATED);
+    }
+    pop_last_polygon_for_custom_label(label_index, dicom_id, delay_emit_event=false) {
+        if (!this._annotations.hasOwnProperty("custom_labels") ||
+            label_index < 0 || label_index >= this._annotations["custom_labels"].length ||
+            !this._annotations["custom_labels"][label_index].hasOwnProperty("grounding") ||
+            !this._annotations["custom_labels"][label_index]["grounding"].hasOwnProperty(dicom_id) ||
+            !this._annotations["custom_labels"][label_index]["grounding"][dicom_id].hasOwnProperty("polygons") ||
+            this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["polygons"].length === 0) {
+            return undefined;
+        }
+        const polygon = this._annotations["custom_labels"][label_index]["grounding"][dicom_id]["polygons"].pop();
+        if (!delay_emit_event) {
+            emit_event(APP_EVENTS.POLYGONS_UPDATED);
+        } else {
+            setTimeout(() => emit_event(APP_EVENTS.POLYGONS_UPDATED), 0);
+        }
+
+        return polygon;
     }
     set_label_source_for_custom_label(label_index, label_source) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -731,7 +736,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"][label_index]["label_source"] = label_source;
-        this._last_edit_timestamp = get_current_timestamp();
     }
     delete_custom_label(label_index) {
         if (!this._annotations.hasOwnProperty("custom_labels") ||
@@ -739,7 +743,6 @@ class ReportData {
             return;
         }
         this._annotations["custom_labels"].splice(label_index, 1);
-        this._last_edit_timestamp = get_current_timestamp();
     }
     get_feedback_for_gt_label_annotations(label_name) {
         let done = true;

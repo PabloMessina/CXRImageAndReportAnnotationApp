@@ -14,7 +14,8 @@ function _get_transform_string(scale, translation) {
 }
 
 function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageId, expandCallback, className,
-        canvasDrawCallback, allowZoomingInAndOut, allowDrawingPolygons, onPolygonCreated, forceUpdate }) {
+        canvasDrawCallback, allowZoomingInAndOut, allowDrawingPolygons, onPolygonCreated, onLastPolygonDeleted,
+        forceUpdate }) {
 
     // console.log(`ImageWrapper: imageId: ${imageId}, size: ${size}, metadata: ${JSON.stringify(metadata)}, maxWidth: ${maxWidth}, maxHeight: ${maxHeight}, useAllSpace: ${useAllSpace}, className: ${className}`);
     // console.log(`ImageWrapper: forceUpdate: ${forceUpdate}`);
@@ -25,25 +26,26 @@ function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageI
     const imageRef = useRef(null);
     const canvasRef = useRef(null);
     const currentPolygonRef = useRef([]);
+    const lastMousePositionRef = useRef(null);
     const use_canvas = canvasDrawCallback !== undefined;
     
     let canvas_component = null;
     let onLoadCallback = null;
     let image_style = null;
 
+    const canvas_rendering_callback = () => canvasDrawCallback(canvasRef.current, currentPolygonRef.current);
+
     if (use_canvas) {
         canvas_component = <canvas ref={canvasRef} className={styles.canvas} />;
         useEffect(() => {
-            const callback = () => canvasDrawCallback(canvasRef.current);
-            canvasDrawCallback(canvasRef.current);
-            subscribe_to_event(APP_EVENTS.POLYGONS_UPDATED, callback);
-            return () => unsubscribe_from_event(APP_EVENTS.POLYGONS_UPDATED, callback);
+            canvas_rendering_callback();
+            subscribe_to_event(APP_EVENTS.POLYGONS_UPDATED, canvas_rendering_callback);
+            return () => unsubscribe_from_event(APP_EVENTS.POLYGONS_UPDATED, canvas_rendering_callback);
         }, [canvasDrawCallback, imageId]);
     }
-
+    
     useEffect(() => {
-        // console.log('ImageWrapper: useEffect: forceUpdate: ', forceUpdate);
-        if (canvasRef.current) canvasDrawCallback(canvasRef.current);
+        if (canvasRef.current) canvas_rendering_callback();
     }, [forceUpdate]);
 
     useEffect(() => {
@@ -66,7 +68,7 @@ function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageI
         if (use_canvas) {
             canvasRef.current.width = image_width;
             canvasRef.current.height = image_height;
-            canvasDrawCallback(canvasRef.current);
+            canvasDrawCallback(canvasRef.current, currentPolygonRef.current);
         }
     }, [maxWidth, maxHeight, useAllSpace, canvasDrawCallback, imageId]);
 
@@ -314,12 +316,13 @@ function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageI
                 // normalize between 0 and 1
                 const newX = offsetX / canvas.width;
                 const newY = offsetY / canvas.height;
+                lastMousePositionRef.current = [newX, newY];
                 if (currentPolygonRef.current.length > 0) {
                     if (currentPolygonRef.current.length > 3) { // polygon must have at least 3 points
                         // compute distance from first point to last point
                         const [firstX, firstY] = currentPolygonRef.current[0];
                         const dist_from_first = euclideanDistance(firstX, firstY, newX, newY, original_width, original_height);
-                        if (dist_from_first < MIN_DISTANCE_BETWEEN_POINTS * 2) { // if close enough, then close the polygon
+                        if (dist_from_first < MIN_DISTANCE_BETWEEN_POINTS * 3.2) { // if close enough, then close the polygon
                             const currentPolygon = currentPolygonRef.current.slice();
                             currentPolygon.pop(); // remove last point, which is (approximately) the same as first point
                             // notify parent component that a polygon has been created
@@ -357,11 +360,13 @@ function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageI
             };
 
             const handleMouseMove = event => {
-                // console.log('handleMouseMove');
-                if (currentPolygonRef.current.length === 0) return;
+                // update last mouse position
                 const { offsetX, offsetY } = event;
                 const newX = offsetX / canvas.width;
                 const newY = offsetY / canvas.height;
+                lastMousePositionRef.current = [newX, newY];
+
+                if (currentPolygonRef.current.length === 0) return;
                 // update last point in current polygon
                 currentPolygonRef.current[currentPolygonRef.current.length-1] = [newX, newY];
                 // re-draw scene with new point
@@ -381,9 +386,23 @@ function ImageWrapper({ maxWidth, maxHeight, useAllSpace, metadata, size, imageI
                         }
                         currentPolygonRef.current.push(lastPoint); // put the last point back in because
                         // it's the one that's being dragged around on mousemove
-                    } else {
+                    } else if (currentPolygonRef.current.length === 2) {
                         // empty current polygon
                         currentPolygonRef.current = [];
+                    } else if (currentPolygonRef.current.length === 1) {
+                        throw new Error('currentPolygonRef.current.length should never be 1');
+                    } else if (currentPolygonRef.current.length === 0) {
+                        if (lastMousePositionRef.current) {
+                            const last_polygon = onLastPolygonDeleted();
+                            if (last_polygon) {
+                                currentPolygonRef.current = last_polygon.slice();
+                                currentPolygonRef.current.push(lastMousePositionRef.current.slice());
+                            } else {
+                                // do nothing
+                            }
+                        } else {
+                            // do nothing
+                        }
                     }
                     // re-draw scene with new point
                     canvasDrawCallback(canvas, currentPolygonRef.current);

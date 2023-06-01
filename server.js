@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const port = 3001;
-const APP_NAME = 'cxr_annotations';
+const APP_NAME = 'cxr_annotations_v2';
 
 // load some environment variables from .env file
 require('dotenv').config();
