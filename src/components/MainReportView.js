@@ -27,10 +27,7 @@ const round_question_button_style = {
 };
 
 function MainReportView() {
-
     const report_data = store.get('report_data');
-
-    // console.log("From MainReportView: ", report_data );
 
     // State that can be initialized from report_data
     const [reportAccuracy, setReportAccuracy] = useState(report_data.get_report_accuracy());
@@ -39,6 +36,7 @@ function MainReportView() {
     const [impressionAccuracy, setImpressionAccuracy] = useState(report_data.get_impression_accuracy());
     // State associated with GUI interactions
     const [reportIndexPairList, setReportIndexPairList] = useState([]);
+    const [reportHighlightColor, setReportHighlightColor] = useState('#FFFF00');
     const [highResImageModalVisible, setHighResImageModalVisible] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(null);
     const [imageAnnotationModalVisible, setImageAnnotationModalVisible] = useState(false);
@@ -48,22 +46,26 @@ function MainReportView() {
 
     useEffect(() => {
         const handleLabelMouseEnter = (label_name, index_pair_list) => {
-            // console.log(`From MainReportView: Label ${label_name} mouse enter`);
             setReportIndexPairList(index_pair_list);
+            setReportHighlightColor('#FFFF00');
         };
         const handleLabelMouseLeave = (label_name) => {
-            // console.log(`From MainReportView: Label ${label_name} mouse leave`);
             setReportIndexPairList([]);
         };
         const handleAnnotateImage = (label_name, image_metadata) => {
-            // console.log(`From MainReportView: Annotate image ${label_name}, ${image_metadata}`);
             setImageAnnotationMetadata({ label_name, image_metadata });
             setImageAnnotationModalVisible(true);
         };
         const handleAnnotateImageCustom = (label_index, image_metadata) => {
-            // console.log(`From MainReportView: Annotate image custom ${label_index}, ${image_metadata}`);
             setImageAnnotationMetadata({ label_index, image_metadata });
             setImageAnnotationModalVisible(true);
+        };
+        const highlightUnusedReportText = () => {
+            setReportIndexPairList(report_data.get_unused_report_text_index_pair_list());
+            setReportHighlightColor('orange');
+        };
+        const unhighlightUnusedReportText = () => {
+            setReportIndexPairList([]);
         };
 
         // Subscribe to events when the component mounts
@@ -71,6 +73,8 @@ function MainReportView() {
         subscribe_to_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
         subscribe_to_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
         subscribe_to_event(APP_EVENTS.ANNOTATE_IMAGE_CUSTOM_LABEL, handleAnnotateImageCustom);
+        subscribe_to_event(APP_EVENTS.HIGHLIGHT_UNUSED_REPORT_TEXT, highlightUnusedReportText);
+        subscribe_to_event(APP_EVENTS.UNHIGHLIGHT_UNUSED_REPORT_TEXT, unhighlightUnusedReportText);
     
         // Unsubscribe from events when the component unmounts
         return () => {
@@ -78,6 +82,8 @@ function MainReportView() {
             unsubscribe_from_event(APP_EVENTS.LABEL_MOUSE_LEAVE, handleLabelMouseLeave);
             unsubscribe_from_event(APP_EVENTS.ANNOTATE_IMAGE, handleAnnotateImage);
             unsubscribe_from_event(APP_EVENTS.ANNOTATE_IMAGE_CUSTOM_LABEL, handleAnnotateImageCustom);
+            unsubscribe_from_event(APP_EVENTS.HIGHLIGHT_UNUSED_REPORT_TEXT, highlightUnusedReportText);
+            unsubscribe_from_event(APP_EVENTS.UNHIGHLIGHT_UNUSED_REPORT_TEXT, unhighlightUnusedReportText);
         };
     }, []);
 
@@ -182,7 +188,8 @@ function MainReportView() {
                     <span className={styles['report-title-span']}>Report</span>
                     <span className={styles['filepath-span']}> Filepath: {report_data.get_report_filepath()} </span>
                     <HighlightableText className={styles['report-container']}
-                        text={report_data.get_original_report()} index_pair_list={reportIndexPairList} />
+                        text={report_data.get_original_report()} indexPairList={reportIndexPairList}
+                        highlightColor={reportHighlightColor}/>
                     <h3>General questions about the report:</h3>
                     <div className={styles['report-question-wrapper']}>
                         <FeedbackForLabel reportFieldName="report_accuracy" className={styles['upper-right-corner-feedback']} />

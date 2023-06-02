@@ -15,6 +15,14 @@ function set_index_for_event_callback(callback, index) {
     return (event) => { callback(event, index); };
 };
 
+function highlightUnusedReportText() {
+    emit_event(APP_EVENTS.HIGHLIGHT_UNUSED_REPORT_TEXT);
+}
+
+function unhighlightUnusedReportText() {
+    emit_event(APP_EVENTS.UNHIGHLIGHT_UNUSED_REPORT_TEXT);
+}
+
 function CustomLabel({ label_index, image_metadata_list, handleDeleteButtonClicked }) {
 
     const report_data = store.get('report_data');
@@ -104,14 +112,6 @@ function CustomLabel({ label_index, image_metadata_list, handleDeleteButtonClick
     }
 
     const label_name_options = report_data.get_custom_label_options();
-    // if (!(labelName === undefined || labelName === null || labelName === "")) {
-    //     const label_name_option = { value: labelName, label: labelName };
-    //     if (!label_name_options.includes(label_name_option)) {
-    //         label_name_options.push(label_name_option);
-    //         label_name_options.sort((a, b) => a.label.localeCompare(b.label));
-    //     }
-    // }
-
     const label_to_display = labelName || "Custom Label " + (label_index + 1);
 
     return (
@@ -144,7 +144,13 @@ function CustomLabel({ label_index, image_metadata_list, handleDeleteButtonClick
                 <AgreementRadioButtons name={'custom_' + label_id} agreement={agreement}
                                     handleAgreementChange={handleAgreementChange}
                 />
-                <div className={styles['question']}>Does the report mention this label (but for some reason the automatic labelers failed to detect it)?</div>
+                <div className={styles['question']} onMouseEnter={highlightUnusedReportText} onMouseLeave={unhighlightUnusedReportText}>
+                    Is this label mentioned in the report but ignored by the automatic labelers?
+                    <br />
+                    <span style={{fontSize: "0.8em", fontStyle: "italic", fontWeight: "normal"}}>
+                        The parts of the report ignored by the automatic labelers are highlighted in orange on mouseover for your convenience.
+                    </span>
+                </div>
                 <label>
                     <input
                         type="radio"

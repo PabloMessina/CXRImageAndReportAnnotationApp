@@ -196,31 +196,41 @@ class ReportData {
             });
         }            
     }
-    get_custom_label_options() {
-        let unused_label_names = new Set(MERGED_LABEL_NAMES);
-        Object.keys(this._metadata["chexpert_labels"]).forEach((label_name) => {
-            unused_label_names.delete(label_name);
-        });
-        Object.keys(this._metadata["chest_imagenome_labels"]).forEach((label_name) => {
-            unused_label_names.delete(label_name);
-        });
-        Object.keys(this._metadata["common_labels"]).forEach((label_name) => {
-            unused_label_names.delete(label_name);
-        });
-        if (this._annotations.hasOwnProperty("custom_labels")) {
-            this._annotations["custom_labels"].forEach((label) => {
-                unused_label_names.delete(label["label_name"]);
+    get_custom_label_options(only_unused=false) {
+        if (only_unused) {
+            let unused_label_names = new Set(MERGED_LABEL_NAMES);
+            Object.keys(this._metadata["chexpert_labels"]).forEach((label_name) => {
+                unused_label_names.delete(label_name);
             });
+            Object.keys(this._metadata["chest_imagenome_labels"]).forEach((label_name) => {
+                unused_label_names.delete(label_name);
+            });
+            Object.keys(this._metadata["common_labels"]).forEach((label_name) => {
+                unused_label_names.delete(label_name);
+            });
+            if (this._annotations.hasOwnProperty("custom_labels")) {
+                this._annotations["custom_labels"].forEach((label) => {
+                    unused_label_names.delete(label["label_name"]);
+                });
+            }
+            unused_label_names = [...unused_label_names];
+            unused_label_names.sort();
+            const options = unused_label_names.map((label_name) => {
+                return {
+                    "label": label_name,
+                    "value": label_name,
+                };
+            });
+            return options;
+        } else {
+            const options = MERGED_LABEL_NAMES.map((label_name) => {
+                return {
+                    "label": label_name,
+                    "value": label_name,
+                };
+            });
+            return options;
         }
-        unused_label_names = [...unused_label_names];
-        unused_label_names.sort();
-        const options = unused_label_names.map((label_name) => {
-            return {
-                "label": label_name,
-                "value": label_name,
-            };
-        });
-        return options;
     }
     
     // Getters and setters for metadata
@@ -288,6 +298,31 @@ class ReportData {
             original_height: orig[1],
             image_index: index,
         }
+    }
+    get_unused_report_text_index_pair_list() {
+        if (this._unused_index_pair_list !== undefined) {
+            return this._unused_index_pair_list;
+        }
+        const used_index_pair_list = [];
+        for (let i = 0; i < LABEL_CATEGORIES.length; ++i) {
+            Object.values(this._metadata[LABEL_CATEGORIES[i]]).forEach((ranges) => {
+                ranges.forEach(range => used_index_pair_list.push(range));
+            });
+        }
+        used_index_pair_list.sort((a, b) => a[0] - b[0]);
+        const unused_index_pair_list = [];
+        let prev = 0;
+        for (let i = 0; i < used_index_pair_list.length; ++i) {
+            if (used_index_pair_list[i][0] > prev) {
+                unused_index_pair_list.push([prev, used_index_pair_list[i][0]]);
+            }
+            prev = used_index_pair_list[i][1];
+        }
+        if (prev < this._metadata["original_report"].length) {
+            unused_index_pair_list.push([prev, this._metadata["original_report"].length]);
+        }
+        this._unused_index_pair_list = unused_index_pair_list;
+        return unused_index_pair_list;
     }
     get_label_data() {
         // Check if list was already computed

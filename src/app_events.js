@@ -6,6 +6,8 @@ const APP_EVENTS = {
     ANNOTATE_IMAGE_CUSTOM_LABEL: 'annotate_image_custom_label',
     POLYGONS_UPDATED: 'polygons_updated',
     CUSTOM_LABEL_NAME_CHANGED: 'custom_label_name_changed',
+    HIGHLIGHT_UNUSED_REPORT_TEXT: 'highlight_unused_report_text',
+    UNHIGHLIGHT_UNUSED_REPORT_TEXT: 'unhighlight_unused_report_text',
 };
 
 // console.log('App events: ', APP_EVENTS);
